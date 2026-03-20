@@ -90,6 +90,24 @@ function generateMessageId(): string {
 }
 
 /**
+ * Extract a readable error message from any error shape.
+ *
+ * Handles Error instances, @wordpress/api-fetch error objects
+ * ({ code, message, data }), and plain strings.
+ */
+function toError(err: unknown): Error {
+	if (err instanceof Error) return err;
+	if (typeof err === 'string') return new Error(err);
+	if (err && typeof err === 'object') {
+		const obj = err as Record<string, unknown>;
+		if (typeof obj.message === 'string') return new Error(obj.message);
+		if (typeof obj.code === 'string') return new Error(obj.code);
+		try { return new Error(JSON.stringify(err)); } catch { /* fall through */ }
+	}
+	return new Error('An unknown error occurred');
+}
+
+/**
  * Core state orchestrator for the chat UI.
  *
  * Manages messages, sessions, continuation loops, and availability
@@ -148,7 +166,7 @@ export function useChat({
 				setSessions(list);
 			} catch (err) {
 				// Sessions not available — degrade gracefully
-				onError?.(err instanceof Error ? err : new Error(String(err)));
+				onError?.(toError(err));
 			} finally {
 				setSessionsLoading(false);
 			}
@@ -217,7 +235,7 @@ export function useChat({
 				.catch(() => { /* ignore */ });
 
 		} catch (err) {
-			const error = err instanceof Error ? err : new Error(String(err));
+			const error = toError(err);
 			onError?.(error);
 
 			// Check if it's an auth error
@@ -248,7 +266,7 @@ export function useChat({
 			const loaded = await apiLoadSession(configRef.current, newSessionId);
 			setMessages(loaded);
 		} catch (err) {
-			onError?.(err instanceof Error ? err : new Error(String(err)));
+			onError?.(toError(err));
 			setMessages([]);
 		} finally {
 			setIsLoading(false);
@@ -272,7 +290,7 @@ export function useChat({
 				setMessages([]);
 			}
 		} catch (err) {
-			onError?.(err instanceof Error ? err : new Error(String(err)));
+			onError?.(toError(err));
 		}
 	}, [onError]);
 
@@ -286,7 +304,7 @@ export function useChat({
 			const list = await apiListSessions(configRef.current);
 			setSessions(list);
 		} catch (err) {
-			onError?.(err instanceof Error ? err : new Error(String(err)));
+			onError?.(toError(err));
 		} finally {
 			setSessionsLoading(false);
 		}
