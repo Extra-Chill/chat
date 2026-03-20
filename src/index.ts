@@ -26,6 +26,9 @@ export {
 // Normalizer
 export { normalizeMessage, normalizeConversation, normalizeSession } from './normalizer.ts';
 
+// Markdown
+export { markdownToHtml } from './markdown.ts';
+
 // Components
 export {
 	ChatMessage as ChatMessageComponent,

@@ -1,5 +1,6 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useMemo } from 'react';
 import type { ChatMessage as ChatMessageType, ContentFormat } from '../types/index.ts';
+import { markdownToHtml } from '../markdown.ts';
 
 export interface ChatMessageProps {
 	/** The message to render. */
@@ -59,13 +60,17 @@ interface DefaultContentProps {
 }
 
 function DefaultContent({ content, format }: DefaultContentProps) {
-	if (format === 'html') {
-		return <div dangerouslySetInnerHTML={{ __html: content }} />;
+	const html = useMemo(() => {
+		if (format === 'html') return content;
+		if (format === 'markdown') return markdownToHtml(content);
+		return null;
+	}, [content, format]);
+
+	if (html !== null) {
+		return <div dangerouslySetInnerHTML={{ __html: html }} />;
 	}
 
-	// For 'text' and 'markdown' (without a custom renderer), render as text
-	// with basic paragraph splitting. Consumers should provide renderContent
-	// for proper markdown support.
+	// Plain text — split on double newlines for paragraphs.
 	return (
 		<>
 			{content.split('\n\n').map((paragraph, i) => (
