@@ -1,154 +1,76 @@
-# Extra Chill Chat
+# @extrachill/chat
 
-Generic frontend Gutenberg chat block for WordPress.
+React chat UI components with a built-in REST API client. Speaks the standard chat message format natively — no adapters, no wrappers.
 
-## Vision
+## Install
 
-`extra-chill/chat` is a shared chat UI primitive for WordPress.
-
-The goal is to provide a **standard, frontend-first, dumb chat block** that can power multiple chat experiences cleanly across different plugins and products.
-
-This repo should focus on the **best chat experience possible** while leaving backend-specific concerns to adapters and consuming plugins.
-
-## Why This Exists
-
-There are already multiple chat block implementations across different repos, including:
-
-- `Extra-Chill/extrachill-chat`
-- `Sarai-Chinwag/spawn`
-
-Those implementations overlap heavily in UI and runtime behavior, but differ in backend details like:
-
-- authentication
-- session management
-- billing / credits
-- agent transport
-- provisioning / availability states
-- branding
-
-This repo exists to separate the **shared chat experience** from the **product-specific business logic**.
-
-## Goals
-
-- Build a reusable Gutenberg chat block
-- Keep the block frontend-focused and presentation-first
-- Support multiple backend implementations through adapters
-- Standardize chat UX across Extra Chill projects
-- Make it easy for WordPress plugins to become AI-native without rebuilding chat UI every time
-
-## Non-Goals
-
-- Owning backend AI orchestration
-- Owning product-specific business logic
-- Owning billing, provisioning, or auth policy
-- Becoming a monolithic app plugin
-
-## Proposed Architecture
-
-```text
-WordPress Plugin
-    |
-    |  server-rendered wrapper + config
-    v
-Shared Chat Block UI
-    |
-    |  adapter contract
-    v
-Backend-specific implementation
+```bash
+npm install @extrachill/chat
 ```
 
-### Core idea
+## Quick Start
 
-The shared block should own:
+```tsx
+import { Chat } from '@extrachill/chat';
+import '@extrachill/chat/css';
+import apiFetch from '@wordpress/api-fetch';
 
-- message list rendering
-- composer UX
-- loading / error / retry states
-- scrolling behavior
-- streaming display
-- session list UI (when enabled)
-- accessibility and keyboard interactions
-- mobile and responsive behavior
-
-The consuming plugin should own:
-
-- REST endpoints
-- authentication
-- pricing / credit logic
-- agent lifecycle
-- account state
-- server availability logic
-- branding and product-specific rules
-
-## Adapter Model
-
-The main abstraction in this repo should be a narrow adapter contract.
-
-Example shape:
-
-```ts
-interface ChatAdapter {
-  capabilities: {
-    sessions: boolean
-    history: boolean
-    streaming: boolean
-    tools: boolean
-    availabilityStates: boolean
-  }
-
-  loadInitialState?(): Promise<InitialState>
-  listSessions?(): Promise<Session[]>
-  loadMessages?(sessionId: string): Promise<Message[]>
-  createSession?(): Promise<Session>
-  sendMessage(input: SendMessageInput): Promise<SendMessageResult>
-  clearSession?(sessionId: string): Promise<void>
+function StudioChat() {
+  return (
+    <Chat
+      basePath="/datamachine/v1/chat"
+      fetchFn={apiFetch}
+      agentId={5}
+    />
+  );
 }
 ```
 
-This keeps the UI generic while allowing:
+## What's Included
 
-- `extrachill-chat` to use WordPress REST endpoints
-- `spawn` to use its own gateway / session model
-- future implementations to plug in without forking the UI
+**Components** — `Chat`, `ChatMessages`, `ChatMessage`, `ChatInput`, `TypingIndicator`, `ToolMessage`, `SessionSwitcher`, `ErrorBoundary`, `AvailabilityGate`
 
-## Initial Priorities
+**Hook** — `useChat` manages messages, sessions, multi-turn continuation loops, and availability state
 
-1. Define the adapter API and normalized state model
-2. Build a minimal frontend-only chat block shell
-3. Support a basic message flow end-to-end
-4. Add optional session sidebar support
-5. Port one real consumer first (`extrachill-chat` is likely the easiest)
-6. Port `spawn` after the core boundaries are proven
+**API client** — `sendMessage`, `continueResponse`, `listSessions`, `loadSession`, `deleteSession`
 
-## Migration Strategy
+**Normalizer** — `normalizeMessage`, `normalizeConversation`, `normalizeSession` for mapping raw backend messages into the UI model
 
-### Phase 1
-- create core shared block
-- define types and adapter interfaces
-- implement minimal mount + send + render loop
+**CSS** — `@extrachill/chat/css` provides base styles with 30+ CSS custom properties (`--ec-chat-*`) for theming
 
-### Phase 2
-- adapt `extrachill-chat` to use shared UI
-- validate API shape and message model
+## REST Contract
 
-### Phase 3
-- adapt `spawn`
-- support richer session and availability states
+The package expects these endpoints at `basePath`:
 
-### Phase 4
-- refine styling, streaming, markdown, and extensibility
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/` | Send a message (creates or continues session) |
+| `POST` | `/continue` | Continue a multi-turn response |
+| `GET` | `/sessions` | List sessions for the current user |
+| `GET` | `/{session_id}` | Load a single session's conversation |
+| `DELETE` | `/{session_id}` | Delete a session |
 
-## Repo Status
+Any backend implementing this contract works. The `fetchFn` prop accepts any function matching `(options: { path, method?, data? }) => Promise<json>` — `@wordpress/api-fetch` works directly.
 
-This repo is currently in the **concept / planning** stage.
+## Theming
 
-Implementation should start only after the core abstractions are clear enough that we do not just move duplication into a new place.
+Override CSS custom properties on `.ec-chat` to match your design system:
 
-## Roadmap
+```css
+.my-chat .ec-chat {
+  --ec-chat-user-bg: var(--accent);
+  --ec-chat-assistant-bg: var(--card-background);
+  --ec-chat-font-family: var(--font-family-body);
+  --ec-chat-border-radius: var(--border-radius-md);
+}
+```
 
-See GitHub issues for the initial roadmap.
+## Consumers
 
-## Related Repositories
+- **extrachill-studio** — Studio Chat tab (agent_id=5)
+- **extrachill-chat** — chat.extrachill.com frontend
+- **data-machine** — Admin chat sidebar
 
-- https://github.com/Extra-Chill/extrachill-chat
-- https://github.com/Sarai-Chinwag/spawn
+## License
+
+GPL-2.0-or-later
