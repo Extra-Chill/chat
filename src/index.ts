@@ -8,13 +8,23 @@ export type {
 	ChatSession,
 	ChatAvailability,
 	ChatInitialState,
-	ChatCapabilities,
-	SendMessageInput,
-	SendMessageResult,
-	ContinueResult,
-	StreamChunk,
-	ChatAdapter,
+	RawMessage,
+	RawSession,
+	SessionMetadata,
 } from './types/index.ts';
+
+// API
+export type { FetchFn, FetchOptions, ChatApiConfig, SendResult, ContinueResult } from './api.ts';
+export {
+	sendMessage,
+	continueResponse,
+	listSessions,
+	loadSession,
+	deleteSession,
+} from './api.ts';
+
+// Normalizer
+export { normalizeMessage, normalizeConversation, normalizeSession } from './normalizer.ts';
 
 // Components
 export {

@@ -1,33 +1,54 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type {
-	ChatAdapter,
-	ChatMessage,
-	ChatSession,
-	ChatAvailability,
-} from '../types/index.ts';
+import type { ChatMessage } from '../types/message.ts';
+import type { ChatSession } from '../types/session.ts';
+import type { ChatAvailability } from '../types/session.ts';
+import type { FetchFn, ChatApiConfig } from '../api.ts';
+import {
+	sendMessage as apiSendMessage,
+	continueResponse as apiContinueResponse,
+	listSessions as apiListSessions,
+	loadSession as apiLoadSession,
+	deleteSession as apiDeleteSession,
+} from '../api.ts';
 
 /**
  * Configuration for the useChat hook.
  */
 export interface UseChatOptions {
-	/** The adapter that handles backend communication. */
-	adapter: ChatAdapter;
+	/**
+	 * Base path for the chat REST endpoints.
+	 * e.g. '/datamachine/v1/chat'
+	 */
+	basePath: string;
+	/**
+	 * Fetch function for API calls. Must accept { path, method?, data? }
+	 * and return parsed JSON. @wordpress/api-fetch works directly.
+	 */
+	fetchFn: FetchFn;
+	/**
+	 * Agent ID to scope the chat to.
+	 */
+	agentId?: number;
 	/**
 	 * Initial messages to hydrate state with (e.g. server-rendered).
-	 * Skips calling adapter.loadInitialState() for messages if provided.
 	 */
 	initialMessages?: ChatMessage[];
-	/** Initial session ID (e.g. from server-rendered state). */
+	/**
+	 * Initial session ID (e.g. from server-rendered state).
+	 */
 	initialSessionId?: string;
 	/**
 	 * Maximum number of continuation turns before stopping.
-	 * Only relevant when adapter supports continueResponse.
 	 * Defaults to 20.
 	 */
 	maxContinueTurns?: number;
-	/** Called when a new message is added to the conversation. */
+	/**
+	 * Called when a new message is added to the conversation.
+	 */
 	onMessage?: (message: ChatMessage) => void;
-	/** Called when an error occurs. */
+	/**
+	 * Called when an error occurs.
+	 */
 	onError?: (error: Error) => void;
 }
 
@@ -45,7 +66,7 @@ export interface UseChatReturn {
 	availability: ChatAvailability;
 	/** Active session ID. */
 	sessionId: string | null;
-	/** List of sessions (empty if adapter doesn't support sessions). */
+	/** List of sessions. */
 	sessions: ChatSession[];
 	/** Whether sessions are loading. */
 	sessionsLoading: boolean;
@@ -57,7 +78,7 @@ export interface UseChatReturn {
 	newSession: () => void;
 	/** Delete a session. */
 	deleteSession: (sessionId: string) => void;
-	/** Clear the current session's messages. */
+	/** Clear the current session's messages locally. */
 	clearSession: () => void;
 	/** Refresh the session list. */
 	refreshSessions: () => void;
@@ -71,30 +92,32 @@ function generateMessageId(): string {
 /**
  * Core state orchestrator for the chat UI.
  *
- * Bridges the adapter contract with React state. Handles:
- * - Sending messages and appending responses
- * - Multi-turn continuation (tool calling loops)
- * - Session management (list, switch, create, delete, clear)
- * - Availability gating
- * - Optimistic user message insertion
- * - Error recovery
+ * Manages messages, sessions, continuation loops, and availability
+ * by calling the standard chat REST endpoints directly.
  *
  * @example
  * ```tsx
+ * import apiFetch from '@wordpress/api-fetch';
+ *
  * const chat = useChat({
- *   adapter: myWordPressAdapter,
- *   initialMessages: window.chatConfig?.messages,
+ *   basePath: '/datamachine/v1/chat',
+ *   fetchFn: apiFetch,
+ *   agentId: 5,
  * });
  *
  * return (
- *   <ChatMessages messages={chat.messages} />
- *   <TypingIndicator visible={chat.isLoading} />
- *   <ChatInput onSend={chat.sendMessage} disabled={chat.isLoading} />
+ *   <>
+ *     <ChatMessages messages={chat.messages} />
+ *     <TypingIndicator visible={chat.isLoading} />
+ *     <ChatInput onSend={chat.sendMessage} disabled={chat.isLoading} />
+ *   </>
  * );
  * ```
  */
 export function useChat({
-	adapter,
+	basePath,
+	fetchFn,
+	agentId,
 	initialMessages,
 	initialSessionId,
 	maxContinueTurns = 20,
@@ -109,52 +132,33 @@ export function useChat({
 	const [sessions, setSessions] = useState<ChatSession[]>([]);
 	const [sessionsLoading, setSessionsLoading] = useState(false);
 
-	// Refs to avoid stale closures
-	const adapterRef = useRef(adapter);
-	adapterRef.current = adapter;
+	// Build API config from props
+	const configRef = useRef<ChatApiConfig>({ basePath, fetchFn, agentId });
+	configRef.current = { basePath, fetchFn, agentId };
+
 	const sessionIdRef = useRef(sessionId);
 	sessionIdRef.current = sessionId;
 
-	// Load initial state on mount
+	// Load sessions on mount
 	useEffect(() => {
-		const load = async () => {
-			const a = adapterRef.current;
-			if (a.loadInitialState) {
-				try {
-					const state = await a.loadInitialState();
-					setAvailability(state.availability);
-					if (state.session) {
-						setSessionId(state.session.id);
-					}
-					if (state.messages && !initialMessages) {
-						setMessages(state.messages);
-					}
-				} catch (err) {
-					onError?.(err instanceof Error ? err : new Error(String(err)));
-				}
-			}
-
-			// Load sessions if supported
-			if (a.capabilities.sessions && a.listSessions) {
-				setSessionsLoading(true);
-				try {
-					const list = await a.listSessions();
-					setSessions(list);
-				} catch (err) {
-					onError?.(err instanceof Error ? err : new Error(String(err)));
-				} finally {
-					setSessionsLoading(false);
-				}
+		const loadSessions = async () => {
+			setSessionsLoading(true);
+			try {
+				const list = await apiListSessions(configRef.current);
+				setSessions(list);
+			} catch (err) {
+				// Sessions not available — degrade gracefully
+				onError?.(err instanceof Error ? err : new Error(String(err)));
+			} finally {
+				setSessionsLoading(false);
 			}
 		};
 
-		load();
-		// Only run on mount
+		loadSessions();
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	const sendMessage = useCallback(async (content: string) => {
-		const a = adapterRef.current;
 		if (isLoading) return;
 
 		// Optimistically add user message
@@ -171,23 +175,21 @@ export function useChat({
 		setTurnCount(0);
 
 		try {
-			const result = await a.sendMessage({
+			const result = await apiSendMessage(
+				configRef.current,
 				content,
-				sessionId: sessionIdRef.current ?? undefined,
-			});
+				sessionIdRef.current ?? undefined,
+			);
 
 			// Update session ID (may be newly created)
 			setSessionId(result.sessionId);
 			sessionIdRef.current = result.sessionId;
 
-			// Append assistant messages
-			setMessages((prev) => [...prev, ...result.messages]);
-			for (const msg of result.messages) {
-				onMessage?.(msg);
-			}
+			// Replace all messages with the full normalized conversation
+			setMessages(result.messages);
 
 			// Handle multi-turn continuation
-			if (!result.completed && a.continueResponse) {
+			if (!result.completed && !result.maxTurnsReached) {
 				let completed = false;
 				let turns = 0;
 
@@ -195,23 +197,33 @@ export function useChat({
 					turns++;
 					setTurnCount(turns);
 
-					const continuation = await a.continueResponse(result.sessionId);
+					const continuation = await apiContinueResponse(
+						configRef.current,
+						result.sessionId,
+					);
+
 					setMessages((prev) => [...prev, ...continuation.messages]);
 					for (const msg of continuation.messages) {
 						onMessage?.(msg);
 					}
 
-					completed = continuation.completed;
+					completed = continuation.completed || continuation.maxTurnsReached;
 				}
 			}
 
 			// Refresh sessions list after a message
-			if (a.capabilities.sessions && a.listSessions) {
-				a.listSessions().then(setSessions).catch(() => { /* ignore */ });
-			}
+			apiListSessions(configRef.current)
+				.then(setSessions)
+				.catch(() => { /* ignore */ });
+
 		} catch (err) {
 			const error = err instanceof Error ? err : new Error(String(err));
 			onError?.(error);
+
+			// Check if it's an auth error
+			if (error.message.includes('403') || error.message.includes('rest_forbidden')) {
+				setAvailability({ status: 'login-required' });
+			}
 
 			// Add error as assistant message so it's visible in the UI
 			const errorMessage: ChatMessage = {
@@ -228,58 +240,32 @@ export function useChat({
 	}, [isLoading, maxContinueTurns, onMessage, onError]);
 
 	const switchSession = useCallback(async (newSessionId: string) => {
-		const a = adapterRef.current;
 		setSessionId(newSessionId);
 		sessionIdRef.current = newSessionId;
-
-		if (a.capabilities.history && a.loadMessages) {
-			setIsLoading(true);
-			try {
-				const loaded = await a.loadMessages(newSessionId);
-				setMessages(loaded);
-			} catch (err) {
-				onError?.(err instanceof Error ? err : new Error(String(err)));
-				setMessages([]);
-			} finally {
-				setIsLoading(false);
-			}
-		} else {
-			// Can't load history — just clear and start fresh in that session
-			setMessages([]);
-		}
-	}, [onError]);
-
-	const newSession = useCallback(async () => {
-		const a = adapterRef.current;
-		setMessages([]);
-
-		if (a.capabilities.sessions && a.createSession) {
-			try {
-				const session = await a.createSession();
-				setSessionId(session.id);
-				sessionIdRef.current = session.id;
-				setSessions((prev) => [session, ...prev]);
-			} catch (err) {
-				onError?.(err instanceof Error ? err : new Error(String(err)));
-				// Clear session ID — next sendMessage will create one
-				setSessionId(null);
-				sessionIdRef.current = null;
-			}
-		} else {
-			setSessionId(null);
-			sessionIdRef.current = null;
-		}
-	}, [onError]);
-
-	const deleteSession = useCallback(async (targetSessionId: string) => {
-		const a = adapterRef.current;
-		if (!a.capabilities.sessions || !a.deleteSession) return;
+		setIsLoading(true);
 
 		try {
-			await a.deleteSession(targetSessionId);
+			const loaded = await apiLoadSession(configRef.current, newSessionId);
+			setMessages(loaded);
+		} catch (err) {
+			onError?.(err instanceof Error ? err : new Error(String(err)));
+			setMessages([]);
+		} finally {
+			setIsLoading(false);
+		}
+	}, [onError]);
+
+	const newSession = useCallback(() => {
+		setSessionId(null);
+		sessionIdRef.current = null;
+		setMessages([]);
+	}, []);
+
+	const deleteSessionHandler = useCallback(async (targetSessionId: string) => {
+		try {
+			await apiDeleteSession(configRef.current, targetSessionId);
 			setSessions((prev) => prev.filter((s) => s.id !== targetSessionId));
 
-			// If we deleted the active session, clear it
 			if (sessionIdRef.current === targetSessionId) {
 				setSessionId(null);
 				sessionIdRef.current = null;
@@ -290,28 +276,14 @@ export function useChat({
 		}
 	}, [onError]);
 
-	const clearSession = useCallback(async () => {
-		const a = adapterRef.current;
-		const sid = sessionIdRef.current;
-
-		if (sid && a.clearSession) {
-			try {
-				await a.clearSession(sid);
-			} catch (err) {
-				onError?.(err instanceof Error ? err : new Error(String(err)));
-			}
-		}
-
+	const clearSession = useCallback(() => {
 		setMessages([]);
-	}, [onError]);
+	}, []);
 
 	const refreshSessions = useCallback(async () => {
-		const a = adapterRef.current;
-		if (!a.capabilities.sessions || !a.listSessions) return;
-
 		setSessionsLoading(true);
 		try {
-			const list = await a.listSessions();
+			const list = await apiListSessions(configRef.current);
 			setSessions(list);
 		} catch (err) {
 			onError?.(err instanceof Error ? err : new Error(String(err)));
@@ -331,7 +303,7 @@ export function useChat({
 		sendMessage,
 		switchSession,
 		newSession,
-		deleteSession,
+		deleteSession: deleteSessionHandler,
 		clearSession,
 		refreshSessions,
 	};

@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
-import type { ChatAdapter, ChatMessage as ChatMessageType, ContentFormat } from './types/index.ts';
+import type { ChatMessage as ChatMessageType, ContentFormat } from './types/index.ts';
+import type { FetchFn } from './api.ts';
 import { useChat, type UseChatOptions } from './hooks/useChat.ts';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { AvailabilityGate } from './components/AvailabilityGate.tsx';
@@ -9,13 +10,25 @@ import { TypingIndicator } from './components/TypingIndicator.tsx';
 import { SessionSwitcher } from './components/SessionSwitcher.tsx';
 
 export interface ChatProps {
-	/** The adapter for backend communication. */
-	adapter: ChatAdapter;
+	/**
+	 * Base path for the chat REST endpoints.
+	 * e.g. '/datamachine/v1/chat'
+	 */
+	basePath: string;
+	/**
+	 * Fetch function for API calls. Must accept { path, method?, data? }
+	 * and return parsed JSON. @wordpress/api-fetch works directly.
+	 */
+	fetchFn: FetchFn;
+	/**
+	 * Agent ID to scope the chat to.
+	 */
+	agentId?: number;
 	/** Content format for message rendering. Defaults to 'markdown'. */
 	contentFormat?: ContentFormat;
 	/** Custom content renderer for messages. */
 	renderContent?: (content: string, role: ChatMessageType['role']) => ReactNode;
-	/** Whether to display tool call/result messages. Defaults to adapter.capabilities.tools. */
+	/** Whether to display tool call/result messages. Defaults to true. */
 	showTools?: boolean;
 	/** Map of tool function names to friendly display labels. */
 	toolNames?: Record<string, string>;
@@ -23,8 +36,6 @@ export interface ChatProps {
 	placeholder?: string;
 	/** Content shown when conversation is empty. */
 	emptyState?: ReactNode;
-	/** Custom availability state renderer. */
-	renderAvailability?: (availability: ChatAdapter['capabilities']) => ReactNode;
 	/** Initial messages (hydrated from server). */
 	initialMessages?: ChatMessageType[];
 	/** Initial session ID. */
@@ -37,6 +48,8 @@ export interface ChatProps {
 	onMessage?: UseChatOptions['onMessage'];
 	/** Additional CSS class name on the root element. */
 	className?: string;
+	/** Whether to show the session switcher. Defaults to true. */
+	showSessions?: boolean;
 	/** Label shown during multi-turn processing. */
 	processingLabel?: (turnCount: number) => string;
 }
@@ -51,18 +64,26 @@ export interface ChatProps {
  * @example
  * ```tsx
  * import { Chat } from '@extrachill/chat';
- * import { myAdapter } from './adapter';
+ * import apiFetch from '@wordpress/api-fetch';
  *
- * function App() {
- *   return <Chat adapter={myAdapter} />;
+ * function StudioChat() {
+ *   return (
+ *     <Chat
+ *       basePath="/datamachine/v1/chat"
+ *       fetchFn={apiFetch}
+ *       agentId={5}
+ *     />
+ *   );
  * }
  * ```
  */
 export function Chat({
-	adapter,
+	basePath,
+	fetchFn,
+	agentId,
 	contentFormat = 'markdown',
 	renderContent,
-	showTools,
+	showTools = true,
 	toolNames,
 	placeholder,
 	emptyState,
@@ -72,10 +93,13 @@ export function Chat({
 	onError,
 	onMessage,
 	className,
+	showSessions = true,
 	processingLabel,
 }: ChatProps) {
 	const chat = useChat({
-		adapter,
+		basePath,
+		fetchFn,
+		agentId,
 		initialMessages,
 		initialSessionId,
 		maxContinueTurns,
@@ -83,7 +107,6 @@ export function Chat({
 		onMessage,
 	});
 
-	const displayTools = showTools ?? adapter.capabilities.tools;
 	const baseClass = 'ec-chat';
 	const classes = [baseClass, className].filter(Boolean).join(' ');
 
@@ -91,13 +114,13 @@ export function Chat({
 		<ErrorBoundary onError={onError ? (err) => onError(err) : undefined}>
 			<div className={classes}>
 				<AvailabilityGate availability={chat.availability}>
-					{adapter.capabilities.sessions && (
+					{showSessions && (
 						<SessionSwitcher
 							sessions={chat.sessions}
 							activeSessionId={chat.sessionId ?? undefined}
 							onSelect={chat.switchSession}
 							onNew={chat.newSession}
-							onDelete={adapter.deleteSession ? chat.deleteSession : undefined}
+							onDelete={chat.deleteSession}
 							loading={chat.sessionsLoading}
 						/>
 					)}
@@ -106,7 +129,7 @@ export function Chat({
 						messages={chat.messages}
 						contentFormat={contentFormat}
 						renderContent={renderContent}
-						showTools={displayTools}
+						showTools={showTools}
 						toolNames={toolNames}
 						emptyState={emptyState}
 					/>

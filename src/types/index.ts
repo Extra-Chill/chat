@@ -13,10 +13,14 @@ export type {
 } from './session.ts';
 
 export type {
-	ChatCapabilities,
-	SendMessageInput,
-	SendMessageResult,
-	ContinueResult,
-	StreamChunk,
-	ChatAdapter,
-} from './adapter.ts';
+	RawMessage,
+	RawSession,
+	SendRequest,
+	SendResponse,
+	ContinueRequest,
+	ContinueResponse,
+	ListSessionsResponse,
+	GetSessionResponse,
+	DeleteSessionResponse,
+	SessionMetadata,
+} from './api.ts';

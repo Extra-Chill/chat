@@ -1,7 +1,7 @@
 {
   "name": "@extrachill/chat",
-  "version": "0.1.0",
-  "description": "Generic chat UI components for WordPress and beyond. Backend-agnostic via adapter contract.",
+  "version": "0.2.0",
+  "description": "Chat UI components with built-in REST API client. Speaks the standard chat message format natively.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -38,7 +38,6 @@
     "wordpress",
     "gutenberg",
     "ai",
-    "adapter",
     "components"
   ],
   "repository": {
