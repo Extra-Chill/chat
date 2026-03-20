@@ -42,9 +42,14 @@ export function ChatMessages({
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
-		if (autoScroll && bottomRef.current) {
-			bottomRef.current.scrollIntoView({ behavior: 'smooth' });
-		}
+		if (!autoScroll || !containerRef.current) return;
+
+		// Scroll within the container, not the whole page.
+		const container = containerRef.current;
+		container.scrollTo({
+			top: container.scrollHeight,
+			behavior: 'smooth',
+		});
 	}, [messages, autoScroll]);
 
 	const displayItems = buildDisplayItems(messages, showTools);
