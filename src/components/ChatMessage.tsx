@@ -1,6 +1,8 @@
-import { type ReactNode, useMemo } from 'react';
+import { type ReactNode, lazy, Suspense } from 'react';
 import type { ChatMessage as ChatMessageType, ContentFormat } from '../types/index.ts';
 import { markdownToHtml } from '../markdown.ts';
+
+const ReactMarkdown = lazy(() => import('react-markdown'));
 
 export interface ChatMessageProps {
 	/** The message to render. */
@@ -9,7 +11,6 @@ export interface ChatMessageProps {
 	contentFormat?: ContentFormat;
 	/**
 	 * Custom content renderer. When provided, overrides contentFormat.
-	 * Use this to plug in your own markdown renderer (react-markdown, etc.).
 	 */
 	renderContent?: (content: string, role: ChatMessageType['role']) => ReactNode;
 	/** Additional CSS class name on the outer wrapper. */
@@ -20,7 +21,7 @@ export interface ChatMessageProps {
  * Renders a single chat message bubble.
  *
  * User messages align right, assistant messages align left.
- * Content rendering is pluggable via `renderContent` or `contentFormat`.
+ * Markdown content is rendered via react-markdown (lazy-loaded).
  */
 export function ChatMessage({
 	message,
@@ -59,15 +60,29 @@ interface DefaultContentProps {
 	format: ContentFormat;
 }
 
-function DefaultContent({ content, format }: DefaultContentProps) {
-	const html = useMemo(() => {
-		if (format === 'html') return content;
-		if (format === 'markdown') return markdownToHtml(content);
-		return null;
-	}, [content, format]);
+/**
+ * Markdown rendered via lazy-loaded react-markdown.
+ * Falls back to the built-in lightweight parser while loading.
+ */
+function MarkdownContent({ content }: { content: string }) {
+	return (
+		<Suspense
+			fallback={
+				<div dangerouslySetInnerHTML={{ __html: markdownToHtml(content) }} />
+			}
+		>
+			<ReactMarkdown>{content}</ReactMarkdown>
+		</Suspense>
+	);
+}
 
-	if (html !== null) {
-		return <div dangerouslySetInnerHTML={{ __html: html }} />;
+function DefaultContent({ content, format }: DefaultContentProps) {
+	if (format === 'html') {
+		return <div dangerouslySetInnerHTML={{ __html: content }} />;
+	}
+
+	if (format === 'markdown') {
+		return <MarkdownContent content={content} />;
 	}
 
 	// Plain text — split on double newlines for paragraphs.
