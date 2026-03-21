@@ -3,18 +3,20 @@ export type {
 	MessageRole,
 	ToolCall,
 	ToolResultMeta,
+	MediaAttachment,
 	ChatMessage,
 	ContentFormat,
 	ChatSession,
 	ChatAvailability,
 	ChatInitialState,
+	RawAttachment,
 	RawMessage,
 	RawSession,
 	SessionMetadata,
 } from './types/index.ts';
 
 // API
-export type { FetchFn, FetchOptions, ChatApiConfig, SendResult, ContinueResult } from './api.ts';
+export type { FetchFn, FetchOptions, ChatApiConfig, SendResult, ContinueResult, SendAttachment } from './api.ts';
 export {
 	sendMessage,
 	continueResponse,

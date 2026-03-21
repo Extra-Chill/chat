@@ -10,18 +10,36 @@
  * A raw message as stored/returned by the backend.
  * The package normalizes these into ChatMessage before rendering.
  */
+/**
+ * A raw media attachment as returned by the backend.
+ */
+export interface RawAttachment {
+	type?: string;
+	url?: string;
+	alt?: string;
+	filename?: string;
+	mime_type?: string;
+	size?: number;
+	media_id?: number;
+	thumbnail_url?: string;
+}
+
 export interface RawMessage {
 	role: 'user' | 'assistant';
 	content: string;
 	metadata?: {
 		timestamp?: string;
-		type?: 'text' | 'tool_call' | 'tool_result';
+		type?: 'text' | 'multimodal' | 'tool_call' | 'tool_result';
 		tool_name?: string;
 		parameters?: Record<string, unknown>;
 		success?: boolean;
 		error?: string;
 		turn?: number;
 		tool_data?: Record<string, unknown>;
+		/** Attachments sent with the message. */
+		attachments?: RawAttachment[];
+		/** Media produced by tool results. */
+		media?: RawAttachment[];
 	};
 	tool_calls?: Array<{
 		tool_name: string;
@@ -36,6 +54,13 @@ export interface SendRequest {
 	message: string;
 	session_id?: string;
 	agent_id?: number;
+	/** Media attachments to send with the message. */
+	attachments?: Array<{
+		url?: string;
+		media_id?: number;
+		mime_type?: string;
+		filename?: string;
+	}>;
 }
 
 export interface SendResponse {

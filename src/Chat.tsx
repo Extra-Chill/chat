@@ -52,6 +52,10 @@ export interface ChatProps {
 	showSessions?: boolean;
 	/** Label shown during multi-turn processing. */
 	processingLabel?: (turnCount: number) => string;
+	/** Whether to show the attachment button in the input. Defaults to true. */
+	allowAttachments?: boolean;
+	/** Accepted file types for attachments. Defaults to 'image/*,video/*'. */
+	acceptFileTypes?: string;
 }
 
 /**
@@ -95,6 +99,8 @@ export function Chat({
 	className,
 	showSessions = true,
 	processingLabel,
+	allowAttachments = true,
+	acceptFileTypes,
 }: ChatProps) {
 	const chat = useChat({
 		basePath,
@@ -149,6 +155,8 @@ export function Chat({
 						onSend={chat.sendMessage}
 						disabled={chat.isLoading}
 						placeholder={placeholder}
+						allowAttachments={allowAttachments}
+						accept={acceptFileTypes}
 					/>
 				</AvailabilityGate>
 			</div>
