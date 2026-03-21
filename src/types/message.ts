@@ -39,6 +39,28 @@ export interface ToolResultMeta {
 }
 
 /**
+ * A media attachment on a chat message (image, video, or file).
+ */
+export interface MediaAttachment {
+	/** Media type. */
+	type: 'image' | 'video' | 'file';
+	/** Public URL of the media. */
+	url: string;
+	/** Alt text or description. */
+	alt?: string;
+	/** Original filename. */
+	filename?: string;
+	/** MIME type (e.g. 'image/jpeg'). */
+	mimeType?: string;
+	/** File size in bytes. */
+	size?: number;
+	/** WordPress media library attachment ID. */
+	mediaId?: number;
+	/** Thumbnail URL for previews. */
+	thumbnailUrl?: string;
+}
+
+/**
  * A single message in a chat conversation.
  */
 export interface ChatMessage {
@@ -54,6 +76,8 @@ export interface ChatMessage {
 	toolCalls?: ToolCall[];
 	/** Tool result metadata (only on tool_result messages). */
 	toolResult?: ToolResultMeta;
+	/** Media attachments (images, videos, files) on this message. */
+	attachments?: MediaAttachment[];
 }
 
 /**

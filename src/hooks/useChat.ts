@@ -2,7 +2,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ChatMessage } from '../types/message.ts';
 import type { ChatSession } from '../types/session.ts';
 import type { ChatAvailability } from '../types/session.ts';
-import type { FetchFn, ChatApiConfig } from '../api.ts';
+import type { MediaAttachment } from '../types/message.ts';
+import type { FetchFn, ChatApiConfig, SendAttachment } from '../api.ts';
 import {
 	sendMessage as apiSendMessage,
 	continueResponse as apiContinueResponse,
@@ -70,8 +71,8 @@ export interface UseChatReturn {
 	sessions: ChatSession[];
 	/** Whether sessions are loading. */
 	sessionsLoading: boolean;
-	/** Send a user message. */
-	sendMessage: (content: string) => void;
+	/** Send a user message (with optional file attachments). */
+	sendMessage: (content: string, files?: File[]) => void;
 	/** Switch to a different session. */
 	switchSession: (sessionId: string) => void;
 	/** Create a new session. */
@@ -176,8 +177,31 @@ export function useChat({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
-	const sendMessage = useCallback(async (content: string) => {
+	const sendMessage = useCallback(async (content: string, files?: File[]) => {
 		if (isLoading) return;
+
+		// Build optimistic attachment previews from local files.
+		let optimisticAttachments: MediaAttachment[] | undefined;
+		let sendAttachments: SendAttachment[] | undefined;
+
+		if (files?.length) {
+			optimisticAttachments = files.map((file) => ({
+				type: file.type.startsWith('image/') ? 'image' as const
+					: file.type.startsWith('video/') ? 'video' as const
+					: 'file' as const,
+				url: URL.createObjectURL(file),
+				filename: file.name,
+				mimeType: file.type,
+				size: file.size,
+			}));
+
+			// For now, send as URL references. In the future, files can be
+			// uploaded to the WordPress media library first and sent as media_ids.
+			sendAttachments = files.map((file) => ({
+				filename: file.name,
+				mime_type: file.type,
+			}));
+		}
 
 		// Optimistically add user message
 		const userMessage: ChatMessage = {
@@ -185,6 +209,7 @@ export function useChat({
 			role: 'user',
 			content,
 			timestamp: new Date().toISOString(),
+			attachments: optimisticAttachments,
 		};
 
 		setMessages((prev) => [...prev, userMessage]);
@@ -197,6 +222,7 @@ export function useChat({
 				configRef.current,
 				content,
 				sessionIdRef.current ?? undefined,
+				sendAttachments,
 			);
 
 			// Update session ID (may be newly created)

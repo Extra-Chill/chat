@@ -7,9 +7,9 @@
  * maps them into the package's role-based message model.
  */
 
-import type { ChatMessage, ToolCall } from './types/message.ts';
+import type { ChatMessage, MediaAttachment, ToolCall } from './types/message.ts';
 import type { ChatSession } from './types/session.ts';
-import type { RawMessage, RawSession } from './types/api.ts';
+import type { RawMessage, RawAttachment, RawSession } from './types/api.ts';
 
 let idCounter = 0;
 function generateId(): string {
@@ -75,9 +75,15 @@ export function normalizeMessage(raw: RawMessage, index: number): ChatMessage {
 	const message: ChatMessage = {
 		id: generateId(),
 		role: raw.role === 'user' ? 'user' : 'assistant',
-		content: raw.content,
+		content: extractTextContent(raw.content),
 		timestamp,
 	};
+
+	// Extract attachments from metadata (user uploads and tool-produced media).
+	const attachments = normalizeAttachments(raw);
+	if (attachments.length > 0) {
+		message.attachments = attachments;
+	}
 
 	// Assistant messages may carry tool_calls at the top level
 	if (raw.role === 'assistant' && raw.tool_calls?.length) {
@@ -109,4 +115,83 @@ export function normalizeSession(raw: RawSession): ChatSession {
 		updatedAt: raw.updated_at,
 		messageCount: raw.message_count,
 	};
+}
+
+/**
+ * Extract text content from a message that may be multi-modal.
+ *
+ * When the backend sends multi-modal content, `content` is an array of
+ * content blocks. We extract the text portion for display.
+ */
+function extractTextContent(content: unknown): string {
+	if (typeof content === 'string') return content;
+
+	if (Array.isArray(content)) {
+		const textParts = content
+			.filter((block: Record<string, unknown>) => block.type === 'text' && typeof block.text === 'string')
+			.map((block: Record<string, unknown>) => block.text as string);
+		return textParts.join('\n');
+	}
+
+	return '';
+}
+
+/**
+ * Normalize a single raw attachment into a MediaAttachment.
+ */
+function normalizeRawAttachment(raw: RawAttachment): MediaAttachment | null {
+	if (!raw.url) return null;
+
+	const mimeType = raw.mime_type ?? '';
+	let type: MediaAttachment['type'] = 'file';
+
+	if (raw.type === 'image' || raw.type === 'video' || raw.type === 'file') {
+		type = raw.type;
+	} else if (mimeType.startsWith('image/')) {
+		type = 'image';
+	} else if (mimeType.startsWith('video/')) {
+		type = 'video';
+	}
+
+	const attachment: MediaAttachment = {
+		type,
+		url: raw.url,
+	};
+
+	if (raw.alt) attachment.alt = raw.alt;
+	if (raw.filename) attachment.filename = raw.filename;
+	if (mimeType) attachment.mimeType = mimeType;
+	if (raw.size) attachment.size = raw.size;
+	if (raw.media_id) attachment.mediaId = raw.media_id;
+	if (raw.thumbnail_url) attachment.thumbnailUrl = raw.thumbnail_url;
+
+	return attachment;
+}
+
+/**
+ * Extract all attachments from a raw message.
+ *
+ * Checks metadata.attachments (user uploads) and metadata.media
+ * (tool-produced media) for renderable media.
+ */
+function normalizeAttachments(raw: RawMessage): MediaAttachment[] {
+	const attachments: MediaAttachment[] = [];
+
+	// User-uploaded attachments.
+	if (raw.metadata?.attachments) {
+		for (const rawAtt of raw.metadata.attachments) {
+			const att = normalizeRawAttachment(rawAtt);
+			if (att) attachments.push(att);
+		}
+	}
+
+	// Tool-produced media.
+	if (raw.metadata?.media) {
+		for (const rawMedia of raw.metadata.media) {
+			const att = normalizeRawAttachment(rawMedia);
+			if (att) attachments.push(att);
+		}
+	}
+
+	return attachments;
 }

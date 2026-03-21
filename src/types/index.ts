@@ -2,6 +2,7 @@ export type {
 	MessageRole,
 	ToolCall,
 	ToolResultMeta,
+	MediaAttachment,
 	ChatMessage,
 	ContentFormat,
 } from './message.ts';
@@ -13,6 +14,7 @@ export type {
 } from './session.ts';
 
 export type {
+	RawAttachment,
 	RawMessage,
 	RawSession,
 	SendRequest,

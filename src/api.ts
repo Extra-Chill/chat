@@ -31,7 +31,10 @@ import { normalizeConversation, normalizeMessage, normalizeSession } from './nor
 export interface FetchOptions {
 	path: string;
 	method?: string;
+	/** JSON body (mutually exclusive with formData). */
 	data?: Record<string, unknown>;
+	/** FormData body for file uploads (mutually exclusive with data). */
+	formData?: FormData;
 }
 
 export type FetchFn = (options: FetchOptions) => Promise<unknown>;
@@ -61,16 +64,32 @@ export interface ContinueResult {
 }
 
 /**
+ * Attachment metadata to send with a message.
+ */
+export interface SendAttachment {
+	url?: string;
+	media_id?: number;
+	mime_type?: string;
+	filename?: string;
+}
+
+/**
  * Send a user message (create or continue a session).
+ *
+ * When attachments are provided, they are included in the JSON body
+ * as structured metadata (not as file uploads — files should already
+ * be in the WordPress media library or accessible by URL).
  */
 export async function sendMessage(
 	config: ChatApiConfig,
 	content: string,
 	sessionId?: string,
+	attachments?: SendAttachment[],
 ): Promise<SendResult> {
 	const body: Record<string, unknown> = { message: content };
 	if (sessionId) body.session_id = sessionId;
 	if (config.agentId) body.agent_id = config.agentId;
+	if (attachments?.length) body.attachments = attachments;
 
 	const raw = await config.fetchFn({
 		path: config.basePath,
