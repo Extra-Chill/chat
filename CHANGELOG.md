@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.5.1] - 2026-03-24
+
+### Changed
+- add metadata prop to Chat component for client context injection
+
 ## [0.5.0] - 2026-03-24
 
 ### Added
