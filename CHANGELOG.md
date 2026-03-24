@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.5.0] - 2026-03-24
+
+### Added
+- v0.4.0 — metadata, onToolCalls, processingSessionId, request dedup
+- media support — attachments in messages, image/video rendering, file input
+- swap to react-markdown for proper rich content rendering
+- built-in markdown rendering for chat messages
+- remove adapter pattern, speak chat REST API natively
+- implement adapter contract, message model, and component library
+
+### Changed
+- Initial commit
+
+### Fixed
+- scroll within chat container instead of hijacking page scroll
+- extract readable error message from @wordpress/api-fetch error objects
+- use npm run build in prepublishOnly (pnpm not available on server)
+
 ## 0.4.0
 
 ### Added
