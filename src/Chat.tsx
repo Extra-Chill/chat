@@ -56,6 +56,11 @@ export interface ChatProps {
 	allowAttachments?: boolean;
 	/** Accepted file types for attachments. Defaults to 'image/*,video/*'. */
 	acceptFileTypes?: string;
+	/**
+	 * Arbitrary metadata forwarded to the backend with each message.
+	 * Use for client-side context injection (e.g. `{ client_context: { tab: 'compose', postId: 123 } }`).
+	 */
+	metadata?: Record<string, unknown>;
 }
 
 /**
@@ -101,6 +106,7 @@ export function Chat({
 	processingLabel,
 	allowAttachments = true,
 	acceptFileTypes,
+	metadata,
 }: ChatProps) {
 	const chat = useChat({
 		basePath,
@@ -111,6 +117,7 @@ export function Chat({
 		maxContinueTurns,
 		onError,
 		onMessage,
+		metadata,
 	});
 
 	const baseClass = 'ec-chat';
