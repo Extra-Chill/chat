@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0
+
+### Added
+- `onToolCalls` callback on `useChat` — fires after each turn when tool calls are present, enabling consumers to react to tool executions (apply diffs, invalidate caches, update external state)
+- `metadata` option on `useChat` — arbitrary key-value pairs forwarded to the backend with each message for context scoping (e.g. `{ post_id, context: 'editor' }` or `{ selected_pipeline_id }`)
+- `sessionContext` option on `useChat` — filters session listing to only show sessions created in a specific context
+- `processingSessionId` in `UseChatReturn` — tracks which session initiated the current request, preventing stale loading indicators when switching sessions mid-request
+- `context` parameter on `listSessions` API function — optional context filter for session listing
+- `metadata` parameter on `sendMessage` API function — forwarded to backend alongside the message
+- `X-Request-ID` header on send requests — automatic request deduplication via `crypto.randomUUID()` with fallback
+- `headers` field on `FetchOptions` — allows passing custom HTTP headers through the fetch function
+- Session creation guard — prevents concurrent session creation with `isCreatingRef`
+
 ## 0.2.0
 
 - **BREAKING:** Remove `ChatAdapter` interface and adapter pattern

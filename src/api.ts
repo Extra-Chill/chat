@@ -35,6 +35,8 @@ export interface FetchOptions {
 	data?: Record<string, unknown>;
 	/** FormData body for file uploads (mutually exclusive with data). */
 	formData?: FormData;
+	/** Additional HTTP headers. */
+	headers?: Record<string, string>;
 }
 
 export type FetchFn = (options: FetchOptions) => Promise<unknown>;
@@ -79,22 +81,35 @@ export interface SendAttachment {
  * When attachments are provided, they are included in the JSON body
  * as structured metadata (not as file uploads — files should already
  * be in the WordPress media library or accessible by URL).
+ *
+ * @param metadata - Arbitrary key-value pairs forwarded to the backend
+ *   alongside the message (e.g. `{ selected_pipeline_id: 42 }` or
+ *   `{ post_id: 100, context: 'editor' }`). The backend can use these
+ *   to scope the AI's behavior. Not persisted as message content.
  */
 export async function sendMessage(
 	config: ChatApiConfig,
 	content: string,
 	sessionId?: string,
 	attachments?: SendAttachment[],
+	metadata?: Record<string, unknown>,
 ): Promise<SendResult> {
 	const body: Record<string, unknown> = { message: content };
 	if (sessionId) body.session_id = sessionId;
 	if (config.agentId) body.agent_id = config.agentId;
 	if (attachments?.length) body.attachments = attachments;
+	if (metadata) Object.assign(body, metadata);
+
+	// Generate a unique request ID for idempotent request handling.
+	const requestId = typeof crypto !== 'undefined' && crypto.randomUUID
+		? crypto.randomUUID()
+		: `req_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
 	const raw = await config.fetchFn({
 		path: config.basePath,
 		method: 'POST',
 		data: body,
+		headers: { 'X-Request-ID': requestId },
 	}) as SendResponse;
 
 	if (!raw.success) {
@@ -137,13 +152,18 @@ export async function continueResponse(
 
 /**
  * List sessions for the current user.
+ *
+ * @param context - Optional context filter (e.g. 'chat', 'editor', 'pipeline').
+ *   Only sessions created in the matching context are returned.
  */
 export async function listSessions(
 	config: ChatApiConfig,
 	limit = 20,
+	context?: string,
 ): Promise<ChatSession[]> {
 	const params = new URLSearchParams({ limit: String(limit) });
 	if (config.agentId) params.set('agent_id', String(config.agentId));
+	if (context) params.set('context', context);
 
 	const raw = await config.fetchFn({
 		path: `${config.basePath}/sessions?${params.toString()}`,

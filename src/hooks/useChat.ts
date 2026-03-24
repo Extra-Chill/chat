@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { ChatMessage } from '../types/message.ts';
+import type { ChatMessage, ToolCall } from '../types/message.ts';
 import type { ChatSession } from '../types/session.ts';
 import type { ChatAvailability } from '../types/session.ts';
 import type { MediaAttachment } from '../types/message.ts';
@@ -51,6 +51,23 @@ export interface UseChatOptions {
 	 * Called when an error occurs.
 	 */
 	onError?: (error: Error) => void;
+	/**
+	 * Called after each turn when tool calls are present in the response.
+	 * Use this to react to tool executions (e.g. invalidate caches,
+	 * apply diffs to the editor, update external state).
+	 */
+	onToolCalls?: (toolCalls: ToolCall[]) => void;
+	/**
+	 * Arbitrary metadata forwarded to the backend with each message.
+	 * Use for context scoping (e.g. `{ selected_pipeline_id: 42 }`,
+	 * `{ post_id: 100, context: 'editor' }`).
+	 */
+	metadata?: Record<string, unknown>;
+	/**
+	 * Optional context filter for session listing.
+	 * Only sessions created in the matching context are shown.
+	 */
+	sessionContext?: string;
 }
 
 /**
@@ -67,6 +84,13 @@ export interface UseChatReturn {
 	availability: ChatAvailability;
 	/** Active session ID. */
 	sessionId: string | null;
+	/**
+	 * The session ID that initiated the current request.
+	 * Use to avoid stale loading indicators when the user switches
+	 * sessions while a request is in flight.
+	 * Null when idle.
+	 */
+	processingSessionId: string | null;
 	/** List of sessions. */
 	sessions: ChatSession[];
 	/** Whether sessions are loading. */
@@ -142,12 +166,16 @@ export function useChat({
 	maxContinueTurns = 20,
 	onMessage,
 	onError,
+	onToolCalls,
+	metadata,
+	sessionContext,
 }: UseChatOptions): UseChatReturn {
 	const [messages, setMessages] = useState<ChatMessage[]>(initialMessages ?? []);
 	const [isLoading, setIsLoading] = useState(false);
 	const [turnCount, setTurnCount] = useState(0);
 	const [availability, setAvailability] = useState<ChatAvailability>({ status: 'ready' });
 	const [sessionId, setSessionId] = useState<string | null>(initialSessionId ?? null);
+	const [processingSessionId, setProcessingSessionId] = useState<string | null>(null);
 	const [sessions, setSessions] = useState<ChatSession[]>([]);
 	const [sessionsLoading, setSessionsLoading] = useState(false);
 
@@ -158,12 +186,26 @@ export function useChat({
 	const sessionIdRef = useRef(sessionId);
 	sessionIdRef.current = sessionId;
 
+	// Refs for latest callback/metadata values (avoid stale closures).
+	const onToolCallsRef = useRef(onToolCalls);
+	onToolCallsRef.current = onToolCalls;
+	const metadataRef = useRef(metadata);
+	metadataRef.current = metadata;
+	const sessionContextRef = useRef(sessionContext);
+	sessionContextRef.current = sessionContext;
+	// Guard against concurrent session creation.
+	const isCreatingRef = useRef(false);
+
 	// Load sessions on mount
 	useEffect(() => {
 		const loadSessions = async () => {
 			setSessionsLoading(true);
 			try {
-				const list = await apiListSessions(configRef.current);
+				const list = await apiListSessions(
+					configRef.current,
+					20,
+					sessionContextRef.current,
+				);
 				setSessions(list);
 			} catch (err) {
 				// Sessions not available — degrade gracefully
@@ -177,8 +219,26 @@ export function useChat({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
+	/**
+	 * Collect tool calls from a list of messages and fire the onToolCalls callback.
+	 */
+	const fireToolCalls = useCallback((msgs: ChatMessage[]) => {
+		const cb = onToolCallsRef.current;
+		if (!cb) return;
+
+		const allToolCalls: ToolCall[] = [];
+		for (const msg of msgs) {
+			if (msg.toolCalls?.length) {
+				allToolCalls.push(...msg.toolCalls);
+			}
+		}
+		if (allToolCalls.length > 0) {
+			cb(allToolCalls);
+		}
+	}, []);
+
 	const sendMessage = useCallback(async (content: string, files?: File[]) => {
-		if (isLoading) return;
+		if (isLoading || isCreatingRef.current) return;
 
 		// Build optimistic attachment previews from local files.
 		let optimisticAttachments: MediaAttachment[] | undefined;
@@ -195,8 +255,6 @@ export function useChat({
 				size: file.size,
 			}));
 
-			// For now, send as URL references. In the future, files can be
-			// uploaded to the WordPress media library first and sent as media_ids.
 			sendAttachments = files.map((file) => ({
 				filename: file.name,
 				mime_type: file.type,
@@ -212,10 +270,19 @@ export function useChat({
 			attachments: optimisticAttachments,
 		};
 
+		// Guard against concurrent session creation.
+		if (!sessionIdRef.current) {
+			isCreatingRef.current = true;
+		}
+
 		setMessages((prev) => [...prev, userMessage]);
 		onMessage?.(userMessage);
 		setIsLoading(true);
 		setTurnCount(0);
+
+		// Track which session initiated the request.
+		const initiatingSessionId = sessionIdRef.current;
+		setProcessingSessionId(initiatingSessionId);
 
 		try {
 			const result = await apiSendMessage(
@@ -223,14 +290,21 @@ export function useChat({
 				content,
 				sessionIdRef.current ?? undefined,
 				sendAttachments,
+				metadataRef.current,
 			);
+
+			isCreatingRef.current = false;
 
 			// Update session ID (may be newly created)
 			setSessionId(result.sessionId);
 			sessionIdRef.current = result.sessionId;
+			setProcessingSessionId(result.sessionId);
 
 			// Replace all messages with the full normalized conversation
 			setMessages(result.messages);
+
+			// Fire tool call callback for the initial response.
+			fireToolCalls(result.messages);
 
 			// Handle multi-turn continuation
 			if (!result.completed && !result.maxTurnsReached) {
@@ -251,16 +325,20 @@ export function useChat({
 						onMessage?.(msg);
 					}
 
+					// Fire tool call callback for each continuation turn.
+					fireToolCalls(continuation.messages);
+
 					completed = continuation.completed || continuation.maxTurnsReached;
 				}
 			}
 
 			// Refresh sessions list after a message
-			apiListSessions(configRef.current)
+			apiListSessions(configRef.current, 20, sessionContextRef.current)
 				.then(setSessions)
 				.catch(() => { /* ignore */ });
 
 		} catch (err) {
+			isCreatingRef.current = false;
 			const error = toError(err);
 			onError?.(error);
 
@@ -280,8 +358,9 @@ export function useChat({
 		} finally {
 			setIsLoading(false);
 			setTurnCount(0);
+			setProcessingSessionId(null);
 		}
-	}, [isLoading, maxContinueTurns, onMessage, onError]);
+	}, [isLoading, maxContinueTurns, onMessage, onError, fireToolCalls]);
 
 	const switchSession = useCallback(async (newSessionId: string) => {
 		setSessionId(newSessionId);
@@ -327,7 +406,11 @@ export function useChat({
 	const refreshSessions = useCallback(async () => {
 		setSessionsLoading(true);
 		try {
-			const list = await apiListSessions(configRef.current);
+			const list = await apiListSessions(
+				configRef.current,
+				20,
+				sessionContextRef.current,
+			);
 			setSessions(list);
 		} catch (err) {
 			onError?.(toError(err));
@@ -342,6 +425,7 @@ export function useChat({
 		turnCount,
 		availability,
 		sessionId,
+		processingSessionId,
 		sessions,
 		sessionsLoading,
 		sendMessage,
