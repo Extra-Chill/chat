@@ -820,3 +820,144 @@
 	top: -4px;
 	right: -4px;
 }
+
+/* ============================================
+   Diff Card
+   ============================================ */
+
+.ec-chat-diff {
+	--ec-chat-diff-added-bg: #dcfce7;
+	--ec-chat-diff-added-text: #166534;
+	--ec-chat-diff-removed-bg: #fee2e2;
+	--ec-chat-diff-removed-text: #991b1b;
+	--ec-chat-diff-accept-bg: #16a34a;
+	--ec-chat-diff-accept-text: #ffffff;
+	--ec-chat-diff-reject-bg: transparent;
+	--ec-chat-diff-reject-text: var(--ec-chat-text-muted);
+	--ec-chat-diff-reject-border: var(--ec-chat-border);
+
+	margin: 4px 0;
+	border: 1px solid var(--ec-chat-tool-border);
+	border-radius: 8px;
+	background: var(--ec-chat-tool-bg);
+	overflow: hidden;
+	font-size: 13px;
+}
+
+.ec-chat-diff--accepted {
+	border-color: var(--ec-chat-diff-accept-bg);
+}
+
+.ec-chat-diff--rejected {
+	opacity: 0.6;
+}
+
+.ec-chat-diff__header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	border-bottom: 1px solid var(--ec-chat-tool-border);
+}
+
+.ec-chat-diff__icon {
+	flex-shrink: 0;
+	font-size: 14px;
+}
+
+.ec-chat-diff--accepted .ec-chat-diff__icon {
+	color: var(--ec-chat-diff-accept-bg);
+}
+
+.ec-chat-diff--rejected .ec-chat-diff__icon {
+	color: var(--ec-chat-tool-error);
+}
+
+.ec-chat-diff__label {
+	flex: 1;
+	font-weight: 500;
+}
+
+.ec-chat-diff__status {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--ec-chat-text-muted);
+}
+
+.ec-chat-diff__content {
+	padding: 10px 12px;
+	line-height: 1.6;
+	white-space: pre-wrap;
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+}
+
+.ec-chat-diff__added {
+	background: var(--ec-chat-diff-added-bg);
+	color: var(--ec-chat-diff-added-text);
+	text-decoration: none;
+	border-radius: 2px;
+	padding: 1px 2px;
+}
+
+.ec-chat-diff__removed {
+	background: var(--ec-chat-diff-removed-bg);
+	color: var(--ec-chat-diff-removed-text);
+	text-decoration: line-through;
+	border-radius: 2px;
+	padding: 1px 2px;
+}
+
+.ec-chat-diff__actions {
+	display: flex;
+	gap: 8px;
+	padding: 8px 12px;
+	border-top: 1px solid var(--ec-chat-tool-border);
+}
+
+.ec-chat-diff__accept {
+	padding: 6px 16px;
+	border: none;
+	border-radius: 6px;
+	background: var(--ec-chat-diff-accept-bg);
+	color: var(--ec-chat-diff-accept-text);
+	font-family: inherit;
+	font-size: 13px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: opacity 0.15s;
+}
+
+.ec-chat-diff__accept:hover:not(:disabled) {
+	opacity: 0.9;
+}
+
+.ec-chat-diff__accept:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.ec-chat-diff__reject {
+	padding: 6px 16px;
+	border: 1px solid var(--ec-chat-diff-reject-border);
+	border-radius: 6px;
+	background: var(--ec-chat-diff-reject-bg);
+	color: var(--ec-chat-diff-reject-text);
+	font-family: inherit;
+	font-size: 13px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: background 0.15s, color 0.15s;
+}
+
+.ec-chat-diff__reject:hover:not(:disabled) {
+	background: var(--ec-chat-diff-removed-bg);
+	color: var(--ec-chat-diff-removed-text);
+}
+
+.ec-chat-diff__reject:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}

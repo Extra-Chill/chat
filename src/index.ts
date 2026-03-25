@@ -54,6 +54,12 @@ export {
 } from './components/ToolMessage.tsx';
 
 export {
+	DiffCard,
+	type DiffCardProps,
+	type DiffData,
+} from './components/DiffCard.tsx';
+
+export {
 	TypingIndicator,
 	type TypingIndicatorProps,
 } from './components/TypingIndicator.tsx';
