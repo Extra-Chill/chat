@@ -68,7 +68,7 @@ Override CSS custom properties on `.ec-chat` to match your design system:
 ## Consumers
 
 - **extrachill-studio** — Studio Chat tab (agent_id=5)
-- **extrachill-chat** — chat.extrachill.com frontend
+- **extrachill-roadie** — Portable floating agent chat
 - **data-machine** — Admin chat sidebar
 
 ## License
