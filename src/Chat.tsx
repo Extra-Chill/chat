@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 import type { ChatMessage as ChatMessageType, ContentFormat } from './types/index.ts';
 import type { FetchFn } from './api.ts';
+import type { ToolGroup } from './components/ToolMessage.tsx';
 import { useChat, type UseChatOptions } from './hooks/useChat.ts';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { AvailabilityGate } from './components/AvailabilityGate.tsx';
@@ -32,6 +33,14 @@ export interface ChatProps {
 	showTools?: boolean;
 	/** Map of tool function names to friendly display labels. */
 	toolNames?: Record<string, string>;
+	/**
+	 * Custom renderers for specific tool names.
+	 *
+	 * Map tool function names to React render functions. When a tool group
+	 * matches a registered name, the custom renderer is used instead of
+	 * the default ToolMessage JSON display.
+	 */
+	toolRenderers?: Record<string, (group: ToolGroup) => ReactNode>;
 	/** Placeholder text for the input. */
 	placeholder?: string;
 	/** Content shown when conversation is empty. */
@@ -94,6 +103,7 @@ export function Chat({
 	renderContent,
 	showTools = true,
 	toolNames,
+	toolRenderers,
 	placeholder,
 	emptyState,
 	initialMessages,
@@ -138,14 +148,15 @@ export function Chat({
 						/>
 					)}
 
-					<ChatMessages
-						messages={chat.messages}
-						contentFormat={contentFormat}
-						renderContent={renderContent}
-						showTools={showTools}
-						toolNames={toolNames}
-						emptyState={emptyState}
-					/>
+				<ChatMessages
+					messages={chat.messages}
+					contentFormat={contentFormat}
+					renderContent={renderContent}
+					showTools={showTools}
+					toolNames={toolNames}
+					toolRenderers={toolRenderers}
+					emptyState={emptyState}
+				/>
 
 					<TypingIndicator
 						visible={chat.isLoading}

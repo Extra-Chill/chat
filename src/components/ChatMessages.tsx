@@ -14,6 +14,22 @@ export interface ChatMessagesProps {
 	showTools?: boolean;
 	/** Custom tool name display map. Maps tool function names to friendly labels. */
 	toolNames?: Record<string, string>;
+	/**
+	 * Custom renderers for specific tool names.
+	 *
+	 * Map tool function names to React render functions. When a tool group
+	 * matches a registered name, the custom renderer is used instead of
+	 * the default `ToolMessage` JSON display.
+	 *
+	 * @example
+	 * ```tsx
+	 * toolRenderers={{
+	 *   edit_post_blocks: (group) => <DiffCard diff={parseDiff(group)} />,
+	 *   replace_post_blocks: (group) => <DiffCard diff={parseDiff(group)} />,
+	 * }}
+	 * ```
+	 */
+	toolRenderers?: Record<string, (group: ToolGroup) => ReactNode>;
 	/** Whether to auto-scroll to bottom on new messages. Defaults to true. */
 	autoScroll?: boolean;
 	/** Placeholder content shown when there are no messages. */
@@ -34,6 +50,7 @@ export function ChatMessages({
 	renderContent,
 	showTools = false,
 	toolNames,
+	toolRenderers,
 	autoScroll = true,
 	emptyState,
 	className,
@@ -81,6 +98,15 @@ export function ChatMessages({
 				}
 
 				if (item.type === 'tool-group' && showTools) {
+					const customRenderer = toolRenderers?.[item.group.toolName];
+					if (customRenderer) {
+						return (
+							<div key={item.group.callMessage.id}>
+								{customRenderer(item.group)}
+							</div>
+						);
+					}
+
 					return (
 						<ToolMessage
 							key={item.group.callMessage.id}
