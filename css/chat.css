@@ -170,10 +170,16 @@
 .ec-chat-message__bubble h2 { font-size: 1.15em; }
 .ec-chat-message__bubble h3 { font-size: 1.05em; }
 
-.ec-chat-message__bubble ul,
+.ec-chat-message__bubble ul {
+	margin: 6px 0;
+	padding-left: 1.5em;
+	list-style: disc;
+}
+
 .ec-chat-message__bubble ol {
 	margin: 6px 0;
 	padding-left: 1.5em;
+	list-style: decimal;
 }
 
 .ec-chat-message__bubble li {
