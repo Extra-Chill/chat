@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.6.0] - 2026-03-25
+
+### Added
+- add DiffCard component and toolRenderers prop for custom tool rendering
+
 ## [0.5.1] - 2026-03-24
 
 ### Changed
