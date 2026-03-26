@@ -79,6 +79,35 @@
 	height: 100%;
 }
 
+.ec-chat__actions {
+	display: flex;
+	justify-content: flex-end;
+	padding: 8px 16px 0;
+	gap: 8px;
+}
+
+.ec-chat-copy {
+	appearance: none;
+	border: 1px solid var(--ec-chat-border);
+	background: var(--ec-chat-input-bg);
+	color: var(--ec-chat-text);
+	border-radius: 999px;
+	padding: 6px 12px;
+	font: inherit;
+	font-size: 12px;
+	cursor: pointer;
+	transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.ec-chat-copy:hover:not(:disabled) {
+	background: var(--ec-chat-session-hover-bg);
+}
+
+.ec-chat-copy:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
 /* ============================================
    Chat Messages Container
    ============================================ */

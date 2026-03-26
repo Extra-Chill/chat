@@ -31,6 +31,9 @@ export { normalizeMessage, normalizeConversation, normalizeSession } from './nor
 // Markdown
 export { markdownToHtml } from './markdown.ts';
 
+// Transcript
+export { formatChatAsMarkdown, copyChatAsMarkdown } from './transcript.ts';
+
 // Client context
 export {
 	getOrCreateClientContextRegistry,
@@ -58,6 +61,11 @@ export {
 	ChatInput,
 	type ChatInputProps,
 } from './components/ChatInput.tsx';
+
+export {
+	CopyTranscriptButton,
+	type CopyTranscriptButtonProps,
+} from './components/CopyTranscriptButton.tsx';
 
 export {
 	ToolMessage,

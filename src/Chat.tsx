@@ -9,6 +9,7 @@ import { ChatMessages } from './components/ChatMessages.tsx';
 import { ChatInput } from './components/ChatInput.tsx';
 import { TypingIndicator } from './components/TypingIndicator.tsx';
 import { SessionSwitcher } from './components/SessionSwitcher.tsx';
+import { CopyTranscriptButton } from './components/CopyTranscriptButton.tsx';
 
 export interface ChatProps {
 	/**
@@ -70,6 +71,12 @@ export interface ChatProps {
 	 * Use for client-side context injection (e.g. `{ client_context: { tab: 'compose', postId: 123 } }`).
 	 */
 	metadata?: Record<string, unknown>;
+	/** Whether to show a built-in copy transcript button. Defaults to false. */
+	showCopyTranscript?: boolean;
+	/** Label for the built-in copy transcript button. */
+	copyTranscriptLabel?: string;
+	/** Label shown after the transcript is copied. */
+	copyTranscriptCopiedLabel?: string;
 }
 
 /**
@@ -117,6 +124,9 @@ export function Chat({
 	allowAttachments = true,
 	acceptFileTypes,
 	metadata,
+	showCopyTranscript = false,
+	copyTranscriptLabel,
+	copyTranscriptCopiedLabel,
 }: ChatProps) {
 	const chat = useChat({
 		basePath,
@@ -137,6 +147,16 @@ export function Chat({
 		<ErrorBoundary onError={onError ? (err) => onError(err) : undefined}>
 			<div className={classes}>
 				<AvailabilityGate availability={chat.availability}>
+					{showCopyTranscript && (
+						<div className="ec-chat__actions">
+							<CopyTranscriptButton
+								messages={chat.messages}
+								label={copyTranscriptLabel}
+								copiedLabel={copyTranscriptCopiedLabel}
+							/>
+						</div>
+					)}
+
 					{showSessions && (
 						<SessionSwitcher
 							sessions={chat.sessions}
