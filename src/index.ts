@@ -31,6 +31,18 @@ export { normalizeMessage, normalizeConversation, normalizeSession } from './nor
 // Markdown
 export { markdownToHtml } from './markdown.ts';
 
+// Client context
+export {
+	getOrCreateClientContextRegistry,
+	registerClientContextProvider,
+	getClientContextMetadata,
+	useClientContextMetadata,
+	type ClientContextProvider,
+	type ClientContextProviderSnapshot,
+	type ClientContextSnapshot,
+	type ClientContextRegistry,
+} from './client-context.ts';
+
 // Components
 export {
 	ChatMessage as ChatMessageComponent,
