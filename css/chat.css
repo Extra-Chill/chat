@@ -921,6 +921,13 @@
 	color: var(--ec-chat-text-muted);
 }
 
+.ec-chat-diff__meta {
+	padding: 0 12px 8px;
+	font-size: 12px;
+	color: var(--ec-chat-text-muted);
+	border-bottom: 1px solid var(--ec-chat-tool-border);
+}
+
 .ec-chat-diff__content {
 	padding: 10px 12px;
 	line-height: 1.6;

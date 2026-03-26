@@ -1,20 +1,10 @@
 import { useState, type ReactNode } from 'react';
+import type { CanonicalDiffData } from '../diff.ts';
 
 /**
  * Diff data returned by a content-editing tool in preview mode.
  */
-export interface DiffData {
-	/** Server-assigned ID for resolving this diff (accept/reject). */
-	diffId: string;
-	/** The type of diff operation. */
-	diffType: 'edit' | 'replace' | 'insert';
-	/** Original content before the change. */
-	originalContent: string;
-	/** New content after the change. */
-	replacementContent: string;
-	/** Human-readable summary of what changed (optional). */
-	summary?: string;
-}
+export type DiffData = CanonicalDiffData;
 
 export interface DiffCardProps {
 	/** The diff data to visualize. */
@@ -59,7 +49,7 @@ export function DiffCard({
 	loading = false,
 	className,
 }: DiffCardProps) {
-	const [status, setStatus] = useState<DiffCardStatus>('pending');
+	const [status, setStatus] = useState<DiffCardStatus>(diff.status ?? 'pending');
 
 	const baseClass = 'ec-chat-diff';
 	const classes = [
@@ -95,6 +85,12 @@ export function DiffCard({
 					</span>
 				)}
 			</div>
+
+			{diff.insertionPoint && (
+				<div className={`${baseClass}__meta`}>
+					{diff.insertionPoint}
+				</div>
+			)}
 
 			<div
 				className={`${baseClass}__content`}

@@ -34,6 +34,18 @@ export { markdownToHtml } from './markdown.ts';
 // Transcript
 export { formatChatAsMarkdown, copyChatAsMarkdown } from './transcript.ts';
 
+// Diff helpers
+export {
+	parseCanonicalDiff,
+	parseCanonicalDiffFromJson,
+	parseCanonicalDiffFromToolGroup,
+	type CanonicalDiffData,
+	type CanonicalDiffEditorData,
+	type CanonicalDiffItem,
+	type CanonicalDiffStatus,
+	type CanonicalDiffType,
+} from './diff.ts';
+
 // Client context
 export {
 	getOrCreateClientContextRegistry,
@@ -107,4 +119,4 @@ export {
 } from './hooks/useChat.ts';
 
 // Composed
-export { Chat, type ChatProps } from './Chat.tsx';
+export { Chat, type ChatProps, type ChatSessionUi } from './Chat.tsx';

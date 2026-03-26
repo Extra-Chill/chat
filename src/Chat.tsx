@@ -10,6 +10,9 @@ import { ChatInput } from './components/ChatInput.tsx';
 import { TypingIndicator } from './components/TypingIndicator.tsx';
 import { SessionSwitcher } from './components/SessionSwitcher.tsx';
 import { CopyTranscriptButton } from './components/CopyTranscriptButton.tsx';
+import type { UseChatReturn } from './hooks/useChat.ts';
+
+export type ChatSessionUi = 'list' | 'none';
 
 export interface ChatProps {
 	/**
@@ -60,6 +63,8 @@ export interface ChatProps {
 	className?: string;
 	/** Whether to show the session switcher. Defaults to true. */
 	showSessions?: boolean;
+	/** Session UI mode. 'list' renders the built-in switcher, 'none' lets the consumer render its own. */
+	sessionUi?: ChatSessionUi;
 	/** Label shown during multi-turn processing. */
 	processingLabel?: (turnCount: number) => string;
 	/** Whether to show the attachment button in the input. Defaults to true. */
@@ -77,6 +82,8 @@ export interface ChatProps {
 	copyTranscriptLabel?: string;
 	/** Label shown after the transcript is copied. */
 	copyTranscriptCopiedLabel?: string;
+	/** Optional custom header/actions area rendered above messages with live chat state. */
+	renderHeader?: ( chat: UseChatReturn ) => ReactNode;
 }
 
 /**
@@ -120,6 +127,7 @@ export function Chat({
 	onMessage,
 	className,
 	showSessions = true,
+	sessionUi = 'list',
 	processingLabel,
 	allowAttachments = true,
 	acceptFileTypes,
@@ -127,6 +135,7 @@ export function Chat({
 	showCopyTranscript = false,
 	copyTranscriptLabel,
 	copyTranscriptCopiedLabel,
+	renderHeader,
 }: ChatProps) {
 	const chat = useChat({
 		basePath,
@@ -147,6 +156,8 @@ export function Chat({
 		<ErrorBoundary onError={onError ? (err) => onError(err) : undefined}>
 			<div className={classes}>
 				<AvailabilityGate availability={chat.availability}>
+					{renderHeader?.( chat )}
+
 					{showCopyTranscript && (
 						<div className="ec-chat__actions">
 							<CopyTranscriptButton
@@ -157,7 +168,7 @@ export function Chat({
 						</div>
 					)}
 
-					{showSessions && (
+					{showSessions && sessionUi === 'list' && (
 						<SessionSwitcher
 							sessions={chat.sessions}
 							activeSessionId={chat.sessionId ?? undefined}
