@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.7.0] - 2026-03-26
+
+### Added
+- standardize canonical diff chat primitives
+- add native chat transcript copy support
+- add shared client context injection api
+
+### Fixed
+- restore list-style on ul/ol inside message bubbles
+
 ## [0.6.0] - 2026-03-25
 
 ### Added
