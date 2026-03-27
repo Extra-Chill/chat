@@ -20,8 +20,7 @@ export interface SessionSwitcherProps {
 /**
  * Session switcher dropdown.
  *
- * Renders a list of sessions with the active one highlighted.
- * Only rendered when the adapter declares `capabilities.sessions = true`.
+ * Shared default for browsing saved chat history without noisy horizontal chips.
  */
 export function SessionSwitcher({
 	sessions,
@@ -34,6 +33,7 @@ export function SessionSwitcher({
 }: SessionSwitcherProps) {
 	const baseClass = 'ec-chat-sessions';
 	const classes = [baseClass, className].filter(Boolean).join(' ');
+	const currentSessionId = activeSessionId ?? sessions[0]?.id ?? '';
 
 	return (
 		<div className={classes}>
@@ -51,57 +51,38 @@ export function SessionSwitcher({
 				)}
 			</div>
 
-			{loading && (
-				<div className={`${baseClass}__loading`}>Loading...</div>
-			)}
+			{loading && <div className={`${baseClass}__loading`}>Loading...</div>}
 
-			<ul className={`${baseClass}__list`} role="listbox" aria-label="Chat sessions">
-				{sessions.map((session) => {
-					const isActive = session.id === activeSessionId;
-					const itemClass = [
-						`${baseClass}__item`,
-						isActive ? `${baseClass}__item--active` : '',
-					].filter(Boolean).join(' ');
-
-					return (
-						<li
-							key={session.id}
-							className={itemClass}
-							role="option"
-							aria-selected={isActive}
+			{sessions.length > 0 && (
+				<div className={`${baseClass}__controls`}>
+					<label className={`${baseClass}__select-wrap`}>
+						<span className="screen-reader-text">Select conversation</span>
+						<select
+							className={`${baseClass}__select`}
+							value={currentSessionId}
+							onChange={(event) => onSelect(event.target.value)}
+							disabled={loading}
 						>
-							<button
-								className={`${baseClass}__item-button`}
-								onClick={() => onSelect(session.id)}
-								type="button"
-							>
-								<span className={`${baseClass}__item-title`}>
-									{session.title ?? `Session ${session.id.slice(0, 8)}`}
-								</span>
-								<time
-									className={`${baseClass}__item-date`}
-									dateTime={session.updatedAt}
-								>
-									{formatRelativeDate(session.updatedAt)}
-								</time>
-							</button>
-							{onDelete && (
-								<button
-									className={`${baseClass}__item-delete`}
-									onClick={(e) => {
-										e.stopPropagation();
-										onDelete(session.id);
-									}}
-									aria-label={`Delete session ${session.title ?? session.id}`}
-									type="button"
-								>
-									\u00D7
-								</button>
-							)}
-						</li>
-					);
-				})}
-			</ul>
+							{sessions.map((session) => (
+								<option key={session.id} value={session.id}>
+									{session.title ?? `Session ${session.id.slice(0, 8)}`} — {formatRelativeDate(session.updatedAt)}
+								</option>
+							))}
+						</select>
+					</label>
+
+					{onDelete && currentSessionId && (
+						<button
+							className={`${baseClass}__delete`}
+							onClick={() => onDelete(currentSessionId)}
+							aria-label="Delete selected conversation"
+							type="button"
+						>
+							Delete
+						</button>
+					)}
+				</div>
+			)}
 		</div>
 	);
 }

@@ -3,13 +3,13 @@ import type { ChatMessage as ChatMessageType, ContentFormat } from './types/inde
 import type { FetchFn } from './api.ts';
 import type { ToolGroup } from './components/ToolMessage.tsx';
 import { useChat, type UseChatOptions } from './hooks/useChat.ts';
+import { useLoadingMessages, type LoadingMessagesConfig } from './hooks/useLoadingMessages.ts';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { AvailabilityGate } from './components/AvailabilityGate.tsx';
 import { ChatMessages } from './components/ChatMessages.tsx';
 import { ChatInput } from './components/ChatInput.tsx';
 import { TypingIndicator } from './components/TypingIndicator.tsx';
 import { SessionSwitcher } from './components/SessionSwitcher.tsx';
-import { CopyTranscriptButton } from './components/CopyTranscriptButton.tsx';
 import type { UseChatReturn } from './hooks/useChat.ts';
 
 export type ChatSessionUi = 'list' | 'none';
@@ -67,6 +67,18 @@ export interface ChatProps {
 	sessionUi?: ChatSessionUi;
 	/** Label shown during multi-turn processing. */
 	processingLabel?: (turnCount: number) => string;
+	/**
+	 * Cycling loading messages shown while the assistant is thinking.
+	 *
+	 * - `true` — enable with built-in defaults.
+	 * - `LoadingMessagesConfig` — extend or override the default pool.
+	 * - `false` / `undefined` — disabled (dots only, original behavior).
+	 *
+	 * When enabled alongside `processingLabel`, loading messages are shown
+	 * on the initial turn (turnCount === 0) and `processingLabel` takes
+	 * over during multi-turn continuation.
+	 */
+	loadingMessages?: boolean | LoadingMessagesConfig;
 	/** Whether to show the attachment button in the input. Defaults to true. */
 	allowAttachments?: boolean;
 	/** Accepted file types for attachments. Defaults to 'image/*,video/*'. */
@@ -76,11 +88,11 @@ export interface ChatProps {
 	 * Use for client-side context injection (e.g. `{ client_context: { tab: 'compose', postId: 123 } }`).
 	 */
 	metadata?: Record<string, unknown>;
-	/** Whether to show a built-in copy transcript button. Defaults to false. */
+	/** Deprecated: built-in copy transcript button UI is no longer rendered. */
 	showCopyTranscript?: boolean;
-	/** Label for the built-in copy transcript button. */
+	/** Deprecated legacy prop retained for compatibility. */
 	copyTranscriptLabel?: string;
-	/** Label shown after the transcript is copied. */
+	/** Deprecated legacy prop retained for compatibility. */
 	copyTranscriptCopiedLabel?: string;
 	/** Optional custom header/actions area rendered above messages with live chat state. */
 	renderHeader?: ( chat: UseChatReturn ) => ReactNode;
@@ -129,6 +141,7 @@ export function Chat({
 	showSessions = true,
 	sessionUi = 'list',
 	processingLabel,
+	loadingMessages,
 	allowAttachments = true,
 	acceptFileTypes,
 	metadata,
@@ -149,6 +162,17 @@ export function Chat({
 		metadata,
 	});
 
+	// Resolve loading messages config.
+	const loadingMessagesConfig: LoadingMessagesConfig | undefined =
+		loadingMessages === true ? {} :
+		loadingMessages ? loadingMessages :
+		undefined;
+
+	const cycling = useLoadingMessages(
+		chat.isLoading && !!loadingMessagesConfig,
+		loadingMessagesConfig,
+	);
+
 	const baseClass = 'ec-chat';
 	const classes = [baseClass, className].filter(Boolean).join(' ');
 
@@ -157,16 +181,6 @@ export function Chat({
 			<div className={classes}>
 				<AvailabilityGate availability={chat.availability}>
 					{renderHeader?.( chat )}
-
-					{showCopyTranscript && (
-						<div className="ec-chat__actions">
-							<CopyTranscriptButton
-								messages={chat.messages}
-								label={copyTranscriptLabel}
-								copiedLabel={copyTranscriptCopiedLabel}
-							/>
-						</div>
-					)}
 
 					{showSessions && sessionUi === 'list' && (
 						<SessionSwitcher
@@ -196,7 +210,9 @@ export function Chat({
 								? (processingLabel
 									? processingLabel(chat.turnCount)
 									: `Processing turn ${chat.turnCount}...`)
-								: undefined
+								: loadingMessagesConfig
+									? cycling.message
+									: undefined
 						}
 					/>
 

@@ -111,12 +111,19 @@ export {
 	type AvailabilityGateProps,
 } from './components/AvailabilityGate.tsx';
 
-// Hook
+// Hooks
 export {
 	useChat,
 	type UseChatOptions,
 	type UseChatReturn,
 } from './hooks/useChat.ts';
+
+export {
+	useLoadingMessages,
+	DEFAULT_LOADING_MESSAGES,
+	type LoadingMessagesConfig,
+	type UseLoadingMessagesReturn,
+} from './hooks/useLoadingMessages.ts';
 
 // Composed
 export { Chat, type ChatProps, type ChatSessionUi } from './Chat.tsx';
