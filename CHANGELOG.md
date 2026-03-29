@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.8.0] - 2026-03-29
+
+### Added
+- add cycling loading messages with extensible pool
+
 ## [0.7.0] - 2026-03-26
 
 ### Added
