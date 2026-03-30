@@ -10,6 +10,7 @@ import {
 	listSessions as apiListSessions,
 	loadSession as apiLoadSession,
 	deleteSession as apiDeleteSession,
+	markSessionRead as apiMarkSessionRead,
 } from '../api.ts';
 
 /**
@@ -105,6 +106,10 @@ export interface UseChatReturn {
 	sessions: ChatSession[];
 	/** Whether sessions are loading. */
 	sessionsLoading: boolean;
+	/** Unread count for the active session. */
+	unreadCount: number;
+	/** Total unread count across all sessions. */
+	totalUnreadCount: number;
 	/** Send a user message (with optional file attachments). */
 	sendMessage: (content: string, files?: File[]) => void;
 	/** Switch to a different session. */
@@ -117,6 +122,8 @@ export interface UseChatReturn {
 	clearSession: () => void;
 	/** Refresh the session list. */
 	refreshSessions: () => void;
+	/** Mark the active session as read (resets unread count). */
+	markAsRead: () => Promise<void>;
 }
 
 let messageIdCounter = 0;
@@ -189,6 +196,11 @@ export function useChat({
 	const [processingSessionId, setProcessingSessionId] = useState<string | null>(null);
 	const [sessions, setSessions] = useState<ChatSession[]>([]);
 	const [sessionsLoading, setSessionsLoading] = useState(false);
+
+	// Derive unread counts from session list.
+	const totalUnreadCount = sessions.reduce((sum, s) => sum + (s.unreadCount ?? 0), 0);
+	const activeSession = sessionId ? sessions.find((s) => s.id === sessionId) : undefined;
+	const unreadCount = activeSession?.unreadCount ?? 0;
 
 	// Build API config from props
 	const configRef = useRef<ChatApiConfig>({ basePath, fetchFn, agentId });
@@ -438,6 +450,24 @@ export function useChat({
 		setMessages([]);
 	}, []);
 
+	const markAsRead = useCallback(async () => {
+		const currentSessionId = sessionIdRef.current;
+		if (!currentSessionId) return;
+
+		// Optimistically zero out unread count for the active session.
+		setSessions((prev) =>
+			prev.map((s) =>
+				s.id === currentSessionId ? { ...s, unreadCount: 0 } : s,
+			),
+		);
+
+		try {
+			await apiMarkSessionRead(configRef.current, currentSessionId);
+		} catch {
+			// Silently fail — next session list refresh will correct the count.
+		}
+	}, []);
+
 	const refreshSessions = useCallback(async () => {
 		setSessionsLoading(true);
 		try {
@@ -463,11 +493,14 @@ export function useChat({
 		processingSessionId,
 		sessions,
 		sessionsLoading,
+		unreadCount,
+		totalUnreadCount,
 		sendMessage,
 		switchSession,
 		newSession,
 		deleteSession: deleteSessionHandler,
 		clearSession,
 		refreshSessions,
+		markAsRead,
 	};
 }

@@ -114,6 +114,7 @@ export function normalizeSession(raw: RawSession): ChatSession {
 		createdAt: raw.created_at,
 		updatedAt: raw.updated_at,
 		messageCount: raw.message_count,
+		unreadCount: raw.unread_count ?? 0,
 	};
 }
 

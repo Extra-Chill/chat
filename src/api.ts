@@ -215,6 +215,21 @@ export async function loadSession(
 }
 
 /**
+ * Mark a session as read, resetting its unread count.
+ *
+ * Calls `POST /sessions/{id}/read` to set `last_read_at` on the backend.
+ */
+export async function markSessionRead(
+	config: ChatApiConfig,
+	sessionId: string,
+): Promise<void> {
+	await config.fetchFn({
+		path: `${config.basePath}/sessions/${sessionId}/read`,
+		method: 'POST',
+	});
+}
+
+/**
  * Delete a session.
  */
 export async function deleteSession(

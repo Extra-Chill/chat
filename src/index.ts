@@ -23,6 +23,7 @@ export {
 	listSessions,
 	loadSession,
 	deleteSession,
+	markSessionRead,
 } from './api.ts';
 
 // Normalizer

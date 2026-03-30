@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import type { ChatMessage as ChatMessageType, ContentFormat } from './types/index.ts';
 import type { FetchFn, MediaUploadFn } from './api.ts';
 import type { ToolGroup } from './components/ToolMessage.tsx';
@@ -122,6 +122,18 @@ export interface ChatProps {
 	copyTranscriptCopiedLabel?: string;
 	/** Optional custom header/actions area rendered above messages with live chat state. */
 	renderHeader?: ( chat: UseChatReturn ) => ReactNode;
+	/**
+	 * Called whenever the total unread count across all sessions changes.
+	 * Use this to drive external unread indicators (e.g. FAB badge).
+	 */
+	onUnreadChange?: (totalUnread: number) => void;
+	/**
+	 * Whether the chat UI is currently visible to the user.
+	 * When `false`, incoming messages increment unread count.
+	 * When transitioning from `false` to `true`, auto-calls `markAsRead()`
+	 * for the active session.
+	 */
+	isVisible?: boolean;
 }
 
 /**
@@ -176,6 +188,8 @@ export function Chat({
 	copyTranscriptLabel,
 	copyTranscriptCopiedLabel,
 	renderHeader,
+	onUnreadChange,
+	isVisible = true,
 }: ChatProps) {
 	// Attachments are only functional when a mediaUploadFn is provided.
 	const resolvedAllowAttachments = allowAttachments ?? !!mediaUploadFn;
@@ -192,6 +206,23 @@ export function Chat({
 		metadata,
 		mediaUploadFn,
 	});
+
+	// Fire onUnreadChange whenever totalUnreadCount changes.
+	useEffect(() => {
+		onUnreadChange?.(chat.totalUnreadCount);
+	}, [chat.totalUnreadCount, onUnreadChange]);
+
+	// Auto-mark active session as read when chat becomes visible.
+	const prevVisibleRef = useRef(isVisible);
+	useEffect(() => {
+		const wasHidden = !prevVisibleRef.current;
+		prevVisibleRef.current = isVisible;
+
+		if (wasHidden && isVisible && chat.sessionId) {
+			chat.markAsRead();
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [isVisible]);
 
 	// Resolve loading messages config.
 	const loadingMessagesConfig: LoadingMessagesConfig | undefined =

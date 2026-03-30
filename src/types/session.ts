@@ -21,6 +21,8 @@ export interface ChatSession {
 	updatedAt: string;
 	/** Number of messages in the session (optional, for display). */
 	messageCount?: number;
+	/** Number of unread assistant messages (0 when fully read). */
+	unreadCount?: number;
 }
 
 /**

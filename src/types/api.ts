@@ -125,6 +125,7 @@ export interface RawSession {
 	context: string;
 	first_message: string | null;
 	message_count: number;
+	unread_count?: number;
 	created_at: string;
 	updated_at: string;
 }
