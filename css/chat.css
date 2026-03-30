@@ -431,6 +431,10 @@
 	padding: 0 var(--ec-chat-padding);
 }
 
+.ec-chat-typing--hidden .ec-chat-typing__dot {
+	animation-play-state: paused;
+}
+
 .ec-chat-typing__dots {
 	display: flex;
 	align-items: center;
@@ -828,15 +832,6 @@
 	align-items: flex-end;
 	gap: 4px;
 	padding: 0 var(--ec-chat-padding) var(--ec-chat-padding);
-}
-
-.ec-chat-input__file-input {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	clip: rect(0, 0, 0, 0);
-	border: 0;
 }
 
 .ec-chat-input__attach {

@@ -45,13 +45,14 @@ export function TypingIndicator({
 		return () => clearTimeout(timeoutRef.current);
 	}, [label, displayLabel]);
 
-	// Reset when indicator hides.
+	// Reset when indicator hides — use current label so re-entry
+	// with the same label doesn't trigger a phantom crossfade.
 	useEffect(() => {
 		if (!visible) {
-			setDisplayLabel(undefined);
+			setDisplayLabel(label);
 			setFading(false);
 		}
-	}, [visible]);
+	}, [visible, label]);
 
 	const baseClass = 'ec-chat-typing';
 	const classes = [
@@ -65,7 +66,7 @@ export function TypingIndicator({
 	].filter(Boolean).join(' ');
 
 	return (
-		<div className={classes} role="status" aria-label={visible ? 'Assistant is typing' : ''}>
+		<div className={classes} role="status" aria-label={visible ? 'Assistant is typing' : undefined} aria-hidden={!visible || undefined}>
 			<div className={`${baseClass}__dots`}>
 				<span className={`${baseClass}__dot`} />
 				<span className={`${baseClass}__dot`} />
