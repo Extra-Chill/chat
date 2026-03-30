@@ -56,7 +56,7 @@ export function SessionSwitcher({
 			{sessions.length > 0 && (
 				<div className={`${baseClass}__controls`}>
 					<label className={`${baseClass}__select-wrap`}>
-						<span className="screen-reader-text">Select conversation</span>
+						<span className="ec-chat-sr-only">Select conversation</span>
 						<select
 							className={`${baseClass}__select`}
 							value={currentSessionId}
