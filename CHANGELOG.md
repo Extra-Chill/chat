@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.9.0] - 2026-03-30
+
+### Added
+- add `mediaUploadFn` callback prop for consumer-provided file uploads
+- `useChat` calls `mediaUploadFn` for each attached file before sending, populating `url`/`media_id` on `SendAttachment`
+- new `MediaUploadFn` type exported from `api.ts`
+
+### Changed
+- attach button auto-hides when no `mediaUploadFn` is provided (don't show UI that doesn't work)
+- `allowAttachments` defaults to `!!mediaUploadFn` instead of `true`
+
 ## [0.8.0] - 2026-03-29
 
 ### Added
