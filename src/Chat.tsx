@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import type { ChatMessage as ChatMessageType, ContentFormat } from './types/index.ts';
-import type { FetchFn } from './api.ts';
+import type { FetchFn, MediaUploadFn } from './api.ts';
 import type { ToolGroup } from './components/ToolMessage.tsx';
 import { useChat, type UseChatOptions } from './hooks/useChat.ts';
 import { useLoadingMessages, type LoadingMessagesConfig } from './hooks/useLoadingMessages.ts';
@@ -79,10 +79,36 @@ export interface ChatProps {
 	 * over during multi-turn continuation.
 	 */
 	loadingMessages?: boolean | LoadingMessagesConfig;
-	/** Whether to show the attachment button in the input. Defaults to true. */
+	/**
+	 * Whether to show the attachment button in the input.
+	 *
+	 * Defaults to `true` when `mediaUploadFn` is provided, `false` otherwise.
+	 * The attach button is hidden when no upload function is configured because
+	 * files cannot be processed without one.
+	 */
 	allowAttachments?: boolean;
 	/** Accepted file types for attachments. Defaults to 'image/*,video/*'. */
 	acceptFileTypes?: string;
+	/**
+	 * Upload function for file attachments.
+	 *
+	 * Called for each file the user attaches before the message is sent.
+	 * Must upload the file and return a URL and/or media ID.
+	 * When not provided, the attach button is hidden.
+	 *
+	 * @example
+	 * ```tsx
+	 * <Chat
+	 *   mediaUploadFn={async (file) => {
+	 *     const formData = new FormData();
+	 *     formData.append('file', file);
+	 *     const media = await apiFetch({ path: '/wp/v2/media', method: 'POST', body: formData });
+	 *     return { url: media.source_url, media_id: media.id };
+	 *   }}
+	 * />
+	 * ```
+	 */
+	mediaUploadFn?: MediaUploadFn;
 	/**
 	 * Arbitrary metadata forwarded to the backend with each message.
 	 * Use for client-side context injection (e.g. `{ client_context: { tab: 'compose', postId: 123 } }`).
@@ -142,14 +168,18 @@ export function Chat({
 	sessionUi = 'list',
 	processingLabel,
 	loadingMessages,
-	allowAttachments = true,
+	allowAttachments,
 	acceptFileTypes,
+	mediaUploadFn,
 	metadata,
 	showCopyTranscript = false,
 	copyTranscriptLabel,
 	copyTranscriptCopiedLabel,
 	renderHeader,
 }: ChatProps) {
+	// Attachments are only functional when a mediaUploadFn is provided.
+	const resolvedAllowAttachments = allowAttachments ?? !!mediaUploadFn;
+
 	const chat = useChat({
 		basePath,
 		fetchFn,
@@ -160,6 +190,7 @@ export function Chat({
 		onError,
 		onMessage,
 		metadata,
+		mediaUploadFn,
 	});
 
 	// Resolve loading messages config.
@@ -220,7 +251,7 @@ export function Chat({
 						onSend={chat.sendMessage}
 						disabled={chat.isLoading}
 						placeholder={placeholder}
-						allowAttachments={allowAttachments}
+						allowAttachments={resolvedAllowAttachments}
 						accept={acceptFileTypes}
 					/>
 				</AvailabilityGate>

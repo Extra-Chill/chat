@@ -3,7 +3,7 @@ import type { ChatMessage, ToolCall } from '../types/message.ts';
 import type { ChatSession } from '../types/session.ts';
 import type { ChatAvailability } from '../types/session.ts';
 import type { MediaAttachment } from '../types/message.ts';
-import type { FetchFn, ChatApiConfig, SendAttachment } from '../api.ts';
+import type { FetchFn, ChatApiConfig, SendAttachment, MediaUploadFn } from '../api.ts';
 import {
 	sendMessage as apiSendMessage,
 	continueResponse as apiContinueResponse,
@@ -63,6 +63,16 @@ export interface UseChatOptions {
 	 * `{ post_id: 100, context: 'editor' }`).
 	 */
 	metadata?: Record<string, unknown>;
+	/**
+	 * Upload function for file attachments.
+	 *
+	 * Called for each file the user attaches before the message is sent.
+	 * Must upload the file and return a URL and/or media ID.
+	 *
+	 * When not provided, the attach button is hidden (via `allowAttachments`
+	 * in the composed Chat component) because files cannot be processed.
+	 */
+	mediaUploadFn?: MediaUploadFn;
 	/**
 	 * Optional context filter for session listing.
 	 * Only sessions created in the matching context are shown.
@@ -168,6 +178,7 @@ export function useChat({
 	onError,
 	onToolCalls,
 	metadata,
+	mediaUploadFn,
 	sessionContext,
 }: UseChatOptions): UseChatReturn {
 	const [messages, setMessages] = useState<ChatMessage[]>(initialMessages ?? []);
@@ -191,6 +202,8 @@ export function useChat({
 	onToolCallsRef.current = onToolCalls;
 	const metadataRef = useRef(metadata);
 	metadataRef.current = metadata;
+	const mediaUploadFnRef = useRef(mediaUploadFn);
+	mediaUploadFnRef.current = mediaUploadFn;
 	const sessionContextRef = useRef(sessionContext);
 	sessionContextRef.current = sessionContext;
 	// Guard against concurrent session creation.
@@ -255,10 +268,32 @@ export function useChat({
 				size: file.size,
 			}));
 
-			sendAttachments = files.map((file) => ({
-				filename: file.name,
-				mime_type: file.type,
-			}));
+			// Upload files via the consumer's upload function, or fall back
+			// to metadata-only attachments (which the backend will reject
+			// without a url/media_id).
+			const uploadFn = mediaUploadFnRef.current;
+			if (uploadFn) {
+				try {
+					sendAttachments = await Promise.all(
+						files.map(async (file) => {
+							const uploaded = await uploadFn(file);
+							return {
+								filename: file.name,
+								mime_type: file.type,
+								url: uploaded.url,
+								media_id: uploaded.media_id,
+							};
+						}),
+					);
+				} catch (err) {
+					onError?.(toError(err));
+					return;
+				}
+			} else {
+				// No upload function — strip attachments so we don't send
+				// incomplete metadata that the backend will reject.
+				optimisticAttachments = undefined;
+			}
 		}
 
 		// Optimistically add user message

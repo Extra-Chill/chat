@@ -76,6 +76,26 @@ export interface SendAttachment {
 }
 
 /**
+ * Upload function provided by the consumer to handle file uploads.
+ *
+ * Called for each file the user attaches before the chat message is sent.
+ * Must upload the file to the consumer's storage (e.g. WordPress Media Library,
+ * S3, etc.) and return a URL and/or media ID that the backend can resolve.
+ *
+ * @example
+ * ```tsx
+ * // WordPress consumer:
+ * const mediaUploadFn: MediaUploadFn = async (file) => {
+ *   const formData = new FormData();
+ *   formData.append('file', file);
+ *   const media = await apiFetch({ path: '/wp/v2/media', method: 'POST', body: formData });
+ *   return { url: media.source_url, media_id: media.id };
+ * };
+ * ```
+ */
+export type MediaUploadFn = (file: File) => Promise<{ url: string; media_id?: number }>;
+
+/**
  * Send a user message (create or continue a session).
  *
  * When attachments are provided, they are included in the JSON body
