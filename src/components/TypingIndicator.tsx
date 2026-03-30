@@ -15,6 +15,9 @@ export interface TypingIndicatorProps {
  * Renders as an assistant-style message bubble.
  * The dot animation is pure CSS — no JS timers.
  *
+ * Always renders in the DOM to avoid layout shift. Uses CSS
+ * opacity + max-height transition for smooth enter/exit.
+ *
  * When `label` changes, the text crossfades out/in via CSS transition.
  */
 export function TypingIndicator({
@@ -42,25 +45,28 @@ export function TypingIndicator({
 		return () => clearTimeout(timeoutRef.current);
 	}, [label, displayLabel]);
 
-	// Reset when indicator hides.
+	// Reset when indicator hides — use current label so re-entry
+	// with the same label doesn't trigger a phantom crossfade.
 	useEffect(() => {
 		if (!visible) {
-			setDisplayLabel(undefined);
+			setDisplayLabel(label);
 			setFading(false);
 		}
-	}, [visible]);
-
-	if (!visible) return null;
+	}, [visible, label]);
 
 	const baseClass = 'ec-chat-typing';
-	const classes = [baseClass, className].filter(Boolean).join(' ');
+	const classes = [
+		baseClass,
+		!visible ? `${baseClass}--hidden` : '',
+		className,
+	].filter(Boolean).join(' ');
 	const labelClasses = [
 		`${baseClass}__label`,
 		fading ? `${baseClass}__label--fading` : '',
 	].filter(Boolean).join(' ');
 
 	return (
-		<div className={classes} role="status" aria-label="Assistant is typing">
+		<div className={classes} role="status" aria-label={visible ? 'Assistant is typing' : undefined} aria-hidden={!visible || undefined}>
 			<div className={`${baseClass}__dots`}>
 				<span className={`${baseClass}__dot`} />
 				<span className={`${baseClass}__dot`} />

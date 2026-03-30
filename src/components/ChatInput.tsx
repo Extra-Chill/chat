@@ -149,7 +149,7 @@ export function ChatInput({
 							type="file"
 							accept={accept}
 							multiple
-							className={`${baseClass}__file-input`}
+							className="ec-chat-sr-only"
 							onChange={(e) => {
 								if (e.target.files) addFiles(e.target.files);
 								e.target.value = '';
