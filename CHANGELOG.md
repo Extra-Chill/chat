@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.10.0] - 2026-04-02
+
+### Added
+- add unread message tracking
+
+### Fixed
+- cleanup pass — pause hidden animations, fix a11y, dedup sr-only
+- improve contrast, add dark mode, clean up miswired CSS
+
 ## [0.9.0] - 2026-03-30
 
 ### Added
