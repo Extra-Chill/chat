@@ -14,6 +14,25 @@ export interface CanonicalDiffEditorData {
 }
 
 export interface CanonicalDiffData {
+	/**
+	 * Pending-action id the backend assigned when staging this preview.
+	 *
+	 * This is the canonical field as of v0.11 — it aligns with the
+	 * unified "pending action" primitive on the server side (any tool
+	 * invocation can be staged + previewed + resolved through the same
+	 * /actions/resolve endpoint, not just content diffs).
+	 */
+	actionId: string;
+	/**
+	 * Back-compat alias for `actionId`.
+	 *
+	 * Always populated with the same value as `actionId`. Kept so
+	 * consumers that wired against the v0.7–v0.10 `diffId` field keep
+	 * working through one more major version. New code should read
+	 * `actionId`.
+	 *
+	 * @deprecated Use `actionId`.
+	 */
 	diffId: string;
 	diffType: CanonicalDiffType;
 	originalContent: string;
@@ -74,13 +93,23 @@ export function parseCanonicalDiff( value: unknown ): CanonicalDiffData | null {
 	const container = isRecord( value.data ) ? value.data : value;
 	const rawDiff = isRecord( container.diff ) ? container.diff : container;
 
-	const diffId = typeof rawDiff.diffId === 'string'
-		? rawDiff.diffId
-		: typeof rawDiff.diff_id === 'string'
-			? rawDiff.diff_id
-			: typeof container.diff_id === 'string'
-				? container.diff_id
-				: '';
+	// Resolve the pending-action id. Prefer the canonical `actionId`
+	// (server unified on pending-action vocabulary in mid-2026) and
+	// fall back to the historical `diffId` / `diff_id` shapes so
+	// older backends and stored payloads keep rendering.
+	const resolvedId = typeof rawDiff.actionId === 'string'
+		? rawDiff.actionId
+		: typeof rawDiff.action_id === 'string'
+			? rawDiff.action_id
+			: typeof container.action_id === 'string'
+				? container.action_id
+				: typeof rawDiff.diffId === 'string'
+					? rawDiff.diffId
+					: typeof rawDiff.diff_id === 'string'
+						? rawDiff.diff_id
+						: typeof container.diff_id === 'string'
+							? container.diff_id
+							: '';
 
 	const diffType = rawDiff.diffType === 'replace' || rawDiff.diffType === 'insert'
 		? rawDiff.diffType
@@ -102,7 +131,7 @@ export function parseCanonicalDiff( value: unknown ): CanonicalDiffData | null {
 			? rawDiff.replacement_content
 			: '';
 
-	if ( ! diffId && ! originalContent && ! replacementContent ) {
+	if ( ! resolvedId && ! originalContent && ! replacementContent ) {
 		return null;
 	}
 
@@ -129,7 +158,8 @@ export function parseCanonicalDiff( value: unknown ): CanonicalDiffData | null {
 		: undefined;
 
 	return {
-		diffId,
+		actionId: resolvedId,
+		diffId: resolvedId,
 		diffType,
 		originalContent,
 		replacementContent,
