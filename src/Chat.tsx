@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef } from 'react';
-import type { ChatMessage as ChatMessageType, ContentFormat } from './types/index.ts';
+import type { ChatMessage as ChatMessageType, ContentFormat, ToolCall } from './types/index.ts';
 import type { FetchFn, MediaUploadFn } from './api.ts';
 import type { ToolGroup } from './components/ToolMessage.tsx';
 import { useChat, type UseChatOptions } from './hooks/useChat.ts';
@@ -59,6 +59,25 @@ export interface ChatProps {
 	onError?: UseChatOptions['onError'];
 	/** Called when a new message is added. */
 	onMessage?: UseChatOptions['onMessage'];
+	/**
+	 * Called with the tool calls emitted by every assistant turn.
+	 *
+	 * Fires once per continuation batch with a flat array of
+	 * {@link ToolCall} records. Use this to react to server-side side
+	 * effects (e.g. invalidate a TanStack Query cache when a tool
+	 * mutates server state).
+	 */
+	onToolCalls?: (toolCalls: ToolCall[]) => void;
+	/**
+	 * Session-list scope filter passed to the backend.
+	 *
+	 * The chat REST contract accepts a `context` query param on
+	 * `/sessions` so multiple chat surfaces (e.g. a sidebar in the
+	 * admin UI and a floating widget on the frontend) can share a
+	 * store without cross-contaminating their session lists. The value
+	 * is opaque to this package — the backend decides how to scope.
+	 */
+	sessionContext?: string;
 	/** Additional CSS class name on the root element. */
 	className?: string;
 	/** Whether to show the session switcher. Defaults to true. */
@@ -175,6 +194,8 @@ export function Chat({
 	maxContinueTurns,
 	onError,
 	onMessage,
+	onToolCalls,
+	sessionContext,
 	className,
 	showSessions = true,
 	sessionUi = 'list',
@@ -203,6 +224,8 @@ export function Chat({
 		maxContinueTurns,
 		onError,
 		onMessage,
+		onToolCalls,
+		sessionContext,
 		metadata,
 		mediaUploadFn,
 	});
