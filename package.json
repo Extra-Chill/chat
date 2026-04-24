@@ -43,7 +43,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Extra-Chill/chat.git"
+    "url": "git+https://github.com/Extra-Chill/chat.git"
   },
   "homepage": "https://github.com/Extra-Chill/chat",
   "bugs": "https://github.com/Extra-Chill/chat/issues",
