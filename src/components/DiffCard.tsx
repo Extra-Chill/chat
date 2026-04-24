@@ -9,10 +9,20 @@ export type DiffData = CanonicalDiffData;
 export interface DiffCardProps {
 	/** The diff data to visualize. */
 	diff: DiffData;
-	/** Called when the user accepts the change. */
-	onAccept?: (diffId: string) => void;
-	/** Called when the user rejects the change. */
-	onReject?: (diffId: string) => void;
+	/**
+	 * Called when the user accepts the change.
+	 *
+	 * Receives the pending-action id (`diff.actionId`, falling back to
+	 * the deprecated `diff.diffId` for older payloads).
+	 */
+	onAccept?: (actionId: string) => void;
+	/**
+	 * Called when the user rejects the change.
+	 *
+	 * Receives the pending-action id (`diff.actionId`, falling back to
+	 * the deprecated `diff.diffId` for older payloads).
+	 */
+	onReject?: (actionId: string) => void;
 	/** Whether the accept/reject action is in progress. */
 	loading?: boolean;
 	/** Additional CSS class name. */
@@ -32,13 +42,14 @@ type DiffCardStatus = 'pending' | 'accepted' | 'rejected';
  * ```tsx
  * <DiffCard
  *   diff={{
- *     diffId: 'abc123',
+ *     actionId: 'abc123',
+ *     diffId: 'abc123', // kept for back-compat; same value as actionId
  *     diffType: 'edit',
  *     originalContent: 'Hello world',
  *     replacementContent: 'Hello universe',
  *   }}
- *   onAccept={(id) => apiFetch({ path: `/resolve/${id}`, method: 'POST', data: { action: 'accept' } })}
- *   onReject={(id) => apiFetch({ path: `/resolve/${id}`, method: 'POST', data: { action: 'reject' } })}
+ *   onAccept={(id) => apiFetch({ path: '/actions/resolve', method: 'POST', data: { action_id: id, decision: 'accepted' } })}
+ *   onReject={(id) => apiFetch({ path: '/actions/resolve', method: 'POST', data: { action_id: id, decision: 'rejected' } })}
  * />
  * ```
  */
@@ -58,14 +69,19 @@ export function DiffCard({
 		className,
 	].filter(Boolean).join(' ');
 
+	// Prefer `actionId` (canonical since v0.11). Fall back to `diffId`
+	// for payloads produced by older parsers or consumers that still
+	// construct `CanonicalDiffData` by hand without setting `actionId`.
+	const resolvedId = diff.actionId || diff.diffId;
+
 	const handleAccept = () => {
 		setStatus('accepted');
-		onAccept?.(diff.diffId);
+		onAccept?.(resolvedId);
 	};
 
 	const handleReject = () => {
 		setStatus('rejected');
-		onReject?.(diff.diffId);
+		onReject?.(resolvedId);
 	};
 
 	const diffHtml = renderDiff(diff);
