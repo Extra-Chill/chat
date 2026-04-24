@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.11.0] - 2026-04-24
+
+### Changed
+- recognize PendingAction `preview` nesting
+- Forward onToolCalls and sessionContext from <Chat> to useChat
+- Add actionId vocabulary to CanonicalDiff (back-compat with diffId)
+
+### Fixed
+- add prepare script so dist/ is built on git install
+
 ## [0.10.0] - 2026-04-02
 
 ### Added
