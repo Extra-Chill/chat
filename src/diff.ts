@@ -91,7 +91,25 @@ export function parseCanonicalDiff( value: unknown ): CanonicalDiffData | null {
 	}
 
 	const container = isRecord( value.data ) ? value.data : value;
-	const rawDiff = isRecord( container.diff ) ? container.diff : container;
+
+	// Resolve the nested diff object. Preferred nesting keys, in order:
+	//   - `preview`  — emitted by Data Machine's PendingActionHelper::stage()
+	//                  envelope (unified pending-action primitive).
+	//   - `preview_data` — same idea, snake_case variant some backends emit
+	//                  when the envelope is serialized without camelCase
+	//                  normalization.
+	//   - `diff`     — historical shape from before the pending-action
+	//                  unification.
+	// If none match, the payload is assumed to already be flat (the rare
+	// case where a backend builds the CanonicalDiffData by hand without
+	// wrapping it in an envelope).
+	const rawDiff = isRecord( container.preview )
+		? container.preview
+		: isRecord( container.preview_data )
+			? container.preview_data
+			: isRecord( container.diff )
+				? container.diff
+				: container;
 
 	// Resolve the pending-action id. Prefer the canonical `actionId`
 	// (server unified on pending-action vocabulary in mid-2026) and
