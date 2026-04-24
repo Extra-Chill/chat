@@ -1,6 +1,6 @@
 {
   "name": "@extrachill/chat",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "Chat UI components with built-in REST API client. Speaks the standard chat message format natively.",
   "type": "module",
   "main": "./dist/index.js",
