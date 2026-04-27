@@ -1,12 +1,15 @@
 {
   "auto_cleanup": false,
   "changelog_target": "CHANGELOG.md",
+  "extensions": {
+    "nodejs": {}
+  },
   "id": "chat",
   "remote_path": "",
   "version_targets": [
     {
       "file": "package.json",
-      "pattern": "\"version\": \"([0-9.]+)\""
+      "pattern": "\"version\":\\s*\"([0-9.]+)\""
     }
   ]
 }
