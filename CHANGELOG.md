@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.12.0] - 2026-05-15
+
+### Added
+- add generic switcher labels
+
+### Fixed
+- place typing indicator in message flow
+- collapse orphaned tool results
+
 ## [0.11.1] - 2026-04-27
 
 ### Changed
