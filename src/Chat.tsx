@@ -84,6 +84,10 @@ export interface ChatProps {
 	showSessions?: boolean;
 	/** Session UI mode. 'list' renders the built-in switcher, 'none' lets the consumer render its own. */
 	sessionUi?: ChatSessionUi;
+	/** Visible title for the built-in session switcher. */
+	sessionSwitcherTitle?: string;
+	/** Accessible label for the built-in session select. */
+	sessionSwitcherSelectLabel?: string;
 	/** Label shown during multi-turn processing. */
 	processingLabel?: (turnCount: number) => string;
 	/**
@@ -199,6 +203,8 @@ export function Chat({
 	className,
 	showSessions = true,
 	sessionUi = 'list',
+	sessionSwitcherTitle,
+	sessionSwitcherSelectLabel,
 	processingLabel,
 	loadingMessages,
 	allowAttachments,
@@ -275,6 +281,8 @@ export function Chat({
 							onNew={chat.newSession}
 							onDelete={chat.deleteSession}
 							loading={chat.sessionsLoading}
+							title={sessionSwitcherTitle}
+							selectLabel={sessionSwitcherSelectLabel}
 						/>
 					)}
 

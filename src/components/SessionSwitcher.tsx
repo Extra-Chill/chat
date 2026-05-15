@@ -13,6 +13,18 @@ export interface SessionSwitcherProps {
 	onDelete?: (sessionId: string) => void;
 	/** Whether sessions are currently loading. */
 	loading?: boolean;
+	/** Visible switcher title. Defaults to 'Conversations'. */
+	title?: string;
+	/** Accessible label for the conversation select. Defaults to 'Select conversation'. */
+	selectLabel?: string;
+	/** Label for the new conversation button. Defaults to 'New conversation'. */
+	newLabel?: string;
+	/** Label for the delete button. Defaults to 'Delete'. */
+	deleteLabel?: string;
+	/** Accessible label for the delete button. Defaults to 'Delete selected conversation'. */
+	deleteAriaLabel?: string;
+	/** Label shown while sessions load. Defaults to 'Loading...'. */
+	loadingLabel?: string;
 	/** Additional CSS class name. */
 	className?: string;
 }
@@ -29,6 +41,12 @@ export function SessionSwitcher({
 	onNew,
 	onDelete,
 	loading = false,
+	title = 'Conversations',
+	selectLabel = 'Select conversation',
+	newLabel = 'New conversation',
+	deleteLabel = 'Delete',
+	deleteAriaLabel = 'Delete selected conversation',
+	loadingLabel = 'Loading...',
 	className,
 }: SessionSwitcherProps) {
 	const baseClass = 'ec-chat-sessions';
@@ -38,12 +56,12 @@ export function SessionSwitcher({
 	return (
 		<div className={classes}>
 			<div className={`${baseClass}__header`}>
-				<span className={`${baseClass}__title`}>Conversations</span>
+				<span className={`${baseClass}__title`}>{title}</span>
 				{onNew && (
 					<button
 						className={`${baseClass}__new`}
 						onClick={onNew}
-						aria-label="New conversation"
+						aria-label={newLabel}
 						type="button"
 					>
 						+
@@ -51,12 +69,12 @@ export function SessionSwitcher({
 				)}
 			</div>
 
-			{loading && <div className={`${baseClass}__loading`}>Loading...</div>}
+			{loading && <div className={`${baseClass}__loading`}>{loadingLabel}</div>}
 
 			{sessions.length > 0 && (
 				<div className={`${baseClass}__controls`}>
 					<label className={`${baseClass}__select-wrap`}>
-						<span className="ec-chat-sr-only">Select conversation</span>
+						<span className="ec-chat-sr-only">{selectLabel}</span>
 						<select
 							className={`${baseClass}__select`}
 							value={currentSessionId}
@@ -75,10 +93,10 @@ export function SessionSwitcher({
 						<button
 							className={`${baseClass}__delete`}
 							onClick={() => onDelete(currentSessionId)}
-							aria-label="Delete selected conversation"
+							aria-label={deleteAriaLabel}
 							type="button"
 						>
-							Delete
+							{deleteLabel}
 						</button>
 					)}
 				</div>
