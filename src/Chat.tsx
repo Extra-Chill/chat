@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef } from 'react';
 import type { ChatMessage as ChatMessageType, ContentFormat, ToolCall } from './types/index.ts';
 import type { FetchFn, MediaUploadFn } from './api.ts';
 import type { ToolGroup } from './components/ToolMessage.tsx';
@@ -257,9 +257,24 @@ export function Chat({
 		chat.isLoading && !!loadingMessagesConfig,
 		loadingMessagesConfig,
 	);
+	const hasLoadingMessages = !!loadingMessagesConfig;
 
 	const baseClass = 'ec-chat';
 	const classes = [baseClass, className].filter(Boolean).join(' ');
+	const typingIndicator = useMemo(() => (
+		<TypingIndicator
+			visible={chat.isLoading}
+			label={
+				chat.turnCount > 0
+					? (processingLabel
+						? processingLabel(chat.turnCount)
+						: `Processing turn ${chat.turnCount}...`)
+					: hasLoadingMessages
+						? cycling.message
+						: undefined
+			}
+		/>
+	), [chat.isLoading, chat.turnCount, processingLabel, hasLoadingMessages, cycling.message]);
 
 	return (
 		<ErrorBoundary onError={onError ? (err) => onError(err) : undefined}>
@@ -286,20 +301,8 @@ export function Chat({
 					toolNames={toolNames}
 					toolRenderers={toolRenderers}
 					emptyState={emptyState}
+					footer={typingIndicator}
 				/>
-
-					<TypingIndicator
-						visible={chat.isLoading}
-						label={
-							chat.turnCount > 0
-								? (processingLabel
-									? processingLabel(chat.turnCount)
-									: `Processing turn ${chat.turnCount}...`)
-								: loadingMessagesConfig
-									? cycling.message
-									: undefined
-						}
-					/>
 
 					<ChatInput
 						onSend={chat.sendMessage}
