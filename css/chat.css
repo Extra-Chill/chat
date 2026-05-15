@@ -579,6 +579,39 @@
    Session Switcher
    ============================================ */
 
+.ec-chat-agents {
+	border-bottom: 1px solid var(--ec-chat-border);
+	padding: 8px var(--ec-chat-padding);
+}
+
+.ec-chat-agents__select-wrap {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.ec-chat-agents__title {
+	flex-shrink: 0;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--ec-chat-text-muted);
+}
+
+.ec-chat-agents__select {
+	flex: 1;
+	min-width: 0;
+	padding: 6px 28px 6px 10px;
+	border: 1px solid var(--ec-chat-border);
+	border-radius: 6px;
+	background: var(--ec-chat-input-bg);
+	color: var(--ec-chat-text);
+	font: inherit;
+}
+
+.ec-chat-agents__empty {
+	color: var(--ec-chat-text-muted);
+}
+
 .ec-chat-sessions {
 	border-bottom: 1px solid var(--ec-chat-border);
 }

@@ -103,6 +103,12 @@ export {
 } from './components/SessionSwitcher.tsx';
 
 export {
+	AgentSwitcher,
+	type AgentSwitcherAgent,
+	type AgentSwitcherProps,
+} from './components/AgentSwitcher.tsx';
+
+export {
 	ErrorBoundary,
 	type ErrorBoundaryProps,
 } from './components/ErrorBoundary.tsx';
