@@ -34,6 +34,8 @@ export interface ChatMessagesProps {
 	autoScroll?: boolean;
 	/** Placeholder content shown when there are no messages. */
 	emptyState?: ReactNode;
+	/** Content rendered at the end of the message flow before the scroll anchor. */
+	footer?: ReactNode;
 	/** Additional CSS class name. */
 	className?: string;
 }
@@ -53,6 +55,7 @@ export function ChatMessages({
 	toolRenderers,
 	autoScroll = true,
 	emptyState,
+	footer,
 	className,
 }: ChatMessagesProps) {
 	const bottomRef = useRef<HTMLDivElement>(null);
@@ -67,7 +70,7 @@ export function ChatMessages({
 			top: container.scrollHeight,
 			behavior: 'smooth',
 		});
-	}, [messages, autoScroll]);
+	}, [messages, footer, autoScroll]);
 
 	const displayItems = buildDisplayItems(messages, showTools);
 	const baseClass = 'ec-chat-messages';
@@ -79,6 +82,8 @@ export function ChatMessages({
 				<div className={`${baseClass}__empty`}>
 					{emptyState}
 				</div>
+				{footer}
+				<div ref={bottomRef} />
 			</div>
 		);
 	}
@@ -118,6 +123,7 @@ export function ChatMessages({
 
 				return null;
 			})}
+			{footer}
 			<div ref={bottomRef} />
 		</div>
 	);
