@@ -216,7 +216,16 @@ function buildDisplayItems(messages: ChatMessageType[], showTools: boolean): Dis
 
 		// Handle orphaned tool_result messages
 		if (msg.role === 'tool_result' && showTools && !processedToolResults.has(msg.id)) {
-			items.push({ type: 'message', message: msg });
+			items.push({
+				type: 'tool-group',
+				group: {
+					callMessage: msg,
+					resultMessage: msg,
+					toolName: msg.toolResult?.toolName ?? 'unknown',
+					parameters: {},
+					success: msg.toolResult?.success ?? null,
+				},
+			});
 		}
 	}
 

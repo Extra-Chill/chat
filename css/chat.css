@@ -485,10 +485,15 @@
    ============================================ */
 
 .ec-chat-tool {
+	align-self: stretch;
+	box-sizing: border-box;
 	margin: 4px var(--ec-chat-padding);
+	max-width: calc(100% - (var(--ec-chat-padding) * 2));
+	min-width: 0;
 	border: 1px solid var(--ec-chat-tool-border);
 	border-radius: 8px;
 	background: var(--ec-chat-tool-bg);
+	color: var(--ec-chat-text);
 	overflow: hidden;
 	font-size: 13px;
 }
@@ -498,6 +503,7 @@
 	align-items: center;
 	gap: 8px;
 	width: 100%;
+	min-width: 0;
 	padding: 8px 12px;
 	border: none;
 	background: transparent;
@@ -523,6 +529,10 @@
 
 .ec-chat-tool__name {
 	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .ec-chat-tool__chevron {
@@ -549,7 +559,9 @@
 }
 
 .ec-chat-tool__json {
+	box-sizing: border-box;
 	margin: 0;
+	max-width: 100%;
 	padding: 8px;
 	background: var(--ec-chat-bg);
 	border: 1px solid var(--ec-chat-tool-border);
