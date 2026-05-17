@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.12.1] - 2026-05-17
+
+### Fixed
+- allow chat to shrink in bounded containers
+
 ## [0.12.0] - 2026-05-15
 
 ### Added
