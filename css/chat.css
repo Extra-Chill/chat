@@ -76,6 +76,8 @@
 	flex-direction: column;
 	max-width: var(--ec-chat-max-width);
 	height: 100%;
+	min-width: 0;
+	min-height: 0;
 }
 
 /* ============================================
@@ -179,7 +181,9 @@
    ============================================ */
 
 .ec-chat-messages {
-	flex: 1;
+	flex: 1 1 auto;
+	min-width: 0;
+	min-height: 0;
 	overflow-y: auto;
 	padding: var(--ec-chat-padding);
 	display: flex;
