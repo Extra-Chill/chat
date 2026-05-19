@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.12.3] - 2026-05-19
+
+### Fixed
+- expose select color theme tokens
+
 ## [0.12.2] - 2026-05-19
 
 ### Fixed
