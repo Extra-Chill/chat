@@ -64,6 +64,9 @@
 	--ec-chat-session-hover-bg: #f9fafb;
 
 	/* Typing indicator */
+	--ec-chat-typing-bg: var(--ec-chat-assistant-bg);
+	--ec-chat-typing-border: var(--ec-chat-border);
+	--ec-chat-typing-text: var(--ec-chat-text-muted);
 	--ec-chat-typing-dot: #6b7280;
 
 	/* Error */
@@ -429,15 +432,16 @@
 	align-items: center;
 	gap: 8px;
 	padding: 4px var(--ec-chat-padding);
-	max-height: 60px;
+	max-height: var(--ec-chat-typing-max-height, 96px);
 	opacity: 1;
-	overflow: hidden;
+	overflow: visible;
 	transition: opacity 0.2s ease, max-height 0.2s ease, padding 0.2s ease;
 }
 
 .ec-chat-typing--hidden {
 	max-height: 0;
 	opacity: 0;
+	overflow: hidden;
 	padding: 0 var(--ec-chat-padding);
 }
 
@@ -450,8 +454,8 @@
 	align-items: center;
 	gap: 4px;
 	padding: 10px 14px;
-	background: var(--ec-chat-assistant-bg);
-	border: 1px solid var(--ec-chat-border);
+	background: var(--ec-chat-typing-bg);
+	border: 1px solid var(--ec-chat-typing-border);
 	border-radius: var(--ec-chat-border-radius);
 	border-bottom-left-radius: 4px;
 }
@@ -481,7 +485,7 @@
 
 .ec-chat-typing__label {
 	font-size: 12px;
-	color: var(--ec-chat-text-muted);
+	color: var(--ec-chat-typing-text);
 	transition: opacity 150ms ease;
 	opacity: 1;
 }
