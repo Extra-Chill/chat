@@ -220,6 +220,7 @@ export function useChat({
 	sessionContextRef.current = sessionContext;
 	// Guard against concurrent session creation.
 	const isCreatingRef = useRef(false);
+	const hasInitialMessagesRef = useRef((initialMessages?.length ?? 0) > 0);
 
 	// Load sessions on mount
 	useEffect(() => {
@@ -232,6 +233,15 @@ export function useChat({
 					sessionContextRef.current,
 				);
 				setSessions(list);
+
+				const defaultSessionId = sessionIdRef.current ?? list[0]?.id ?? null;
+				if (defaultSessionId && !hasInitialMessagesRef.current) {
+					setSessionId(defaultSessionId);
+					sessionIdRef.current = defaultSessionId;
+
+					const loaded = await apiLoadSession(configRef.current, defaultSessionId);
+					setMessages(loaded);
+				}
 			} catch (err) {
 				// Sessions not available — degrade gracefully
 				onError?.(toError(err));
