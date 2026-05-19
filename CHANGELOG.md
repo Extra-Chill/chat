@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.12.2] - 2026-05-19
+
+### Fixed
+- load default chat session messages
+
 ## [0.12.1] - 2026-05-17
 
 ### Fixed
