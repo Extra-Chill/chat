@@ -42,6 +42,12 @@
 	--ec-chat-input-border: #d1d5db;
 	--ec-chat-input-focus-border: #2563eb;
 
+	/* Select controls */
+	--ec-chat-select-bg: var(--ec-chat-input-bg);
+	--ec-chat-select-text: var(--ec-chat-text);
+	--ec-chat-select-border: var(--ec-chat-border);
+	--ec-chat-select-focus-border: var(--ec-chat-input-focus-border);
+
 	/* Send button */
 	--ec-chat-send-bg: #2563eb;
 	--ec-chat-send-text: #ffffff;
@@ -605,11 +611,16 @@
 	flex: 1;
 	min-width: 0;
 	padding: 6px 28px 6px 10px;
-	border: 1px solid var(--ec-chat-border);
+	border: 1px solid var(--ec-chat-select-border);
 	border-radius: 6px;
-	background: var(--ec-chat-input-bg);
-	color: var(--ec-chat-text);
+	background: var(--ec-chat-select-bg);
+	color: var(--ec-chat-select-text);
 	font: inherit;
+}
+
+.ec-chat-agents__select:focus {
+	border-color: var(--ec-chat-select-focus-border);
+	outline: 2px solid transparent;
 }
 
 .ec-chat-agents__empty {
@@ -677,12 +688,17 @@
 .ec-chat-sessions__select {
 	width: 100%;
 	min-height: 36px;
-	border: 1px solid var(--ec-chat-border);
+	border: 1px solid var(--ec-chat-select-border);
 	border-radius: 999px;
 	padding: 8px 12px;
 	font: inherit;
-	background: var(--ec-chat-assistant-bg);
-	color: inherit;
+	background: var(--ec-chat-select-bg);
+	color: var(--ec-chat-select-text);
+}
+
+.ec-chat-sessions__select:focus {
+	border-color: var(--ec-chat-select-focus-border);
+	outline: 2px solid transparent;
 }
 
 .ec-chat-sessions__delete {
