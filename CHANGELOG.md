@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.12.4] - 2026-05-19
+
+### Fixed
+- prevent typing indicator clipping
+
 ## [0.12.3] - 2026-05-19
 
 ### Fixed
