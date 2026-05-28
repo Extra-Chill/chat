@@ -73,7 +73,7 @@ export interface SendResponse {
 			parameters: Record<string, unknown>;
 		}>;
 		conversation: RawMessage[];
-		metadata: SessionMetadata;
+		metadata: Record<string, unknown>;
 		completed: boolean;
 		max_turns: number;
 		turn_number: number;
@@ -103,6 +103,7 @@ export interface ContinueResponse {
 		turn_number: number;
 		max_turns: number;
 		max_turns_reached: boolean;
+		metadata?: Record<string, unknown>;
 	};
 }
 

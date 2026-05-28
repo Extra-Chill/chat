@@ -53,6 +53,7 @@ export interface ChatApiConfig {
 export interface SendResult {
 	sessionId: string;
 	messages: ChatMessage[];
+	metadata: Record<string, unknown>;
 	completed: boolean;
 	turnNumber: number;
 	maxTurnsReached: boolean;
@@ -60,6 +61,7 @@ export interface SendResult {
 
 export interface ContinueResult {
 	messages: ChatMessage[];
+	metadata: Record<string, unknown>;
 	completed: boolean;
 	turnNumber: number;
 	maxTurnsReached: boolean;
@@ -139,6 +141,7 @@ export async function sendMessage(
 	return {
 		sessionId: raw.data.session_id,
 		messages: normalizeConversation(raw.data.conversation),
+		metadata: raw.data.metadata ?? {},
 		completed: raw.data.completed,
 		turnNumber: raw.data.turn_number,
 		maxTurnsReached: raw.data.max_turns_reached,
@@ -164,6 +167,7 @@ export async function continueResponse(
 
 	return {
 		messages: raw.data.new_messages.map(normalizeMessage),
+		metadata: raw.data.metadata ?? {},
 		completed: raw.data.completed,
 		turnNumber: raw.data.turn_number,
 		maxTurnsReached: raw.data.max_turns_reached,

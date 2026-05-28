@@ -58,6 +58,8 @@ export interface UseChatOptions {
 	 * apply diffs to the editor, update external state).
 	 */
 	onToolCalls?: (toolCalls: ToolCall[]) => void;
+	/** Called with response-level metadata returned by the backend. */
+	onResponseMetadata?: (metadata: Record<string, unknown>) => void;
 	/**
 	 * Arbitrary metadata forwarded to the backend with each message.
 	 * Use for context scoping (e.g. `{ selected_pipeline_id: 42 }`,
@@ -184,6 +186,7 @@ export function useChat({
 	onMessage,
 	onError,
 	onToolCalls,
+	onResponseMetadata,
 	metadata,
 	mediaUploadFn,
 	sessionContext,
@@ -212,6 +215,8 @@ export function useChat({
 	// Refs for latest callback/metadata values (avoid stale closures).
 	const onToolCallsRef = useRef(onToolCalls);
 	onToolCallsRef.current = onToolCalls;
+	const onResponseMetadataRef = useRef(onResponseMetadata);
+	onResponseMetadataRef.current = onResponseMetadata;
 	const metadataRef = useRef(metadata);
 	metadataRef.current = metadata;
 	const mediaUploadFnRef = useRef(mediaUploadFn);
@@ -359,6 +364,7 @@ export function useChat({
 
 			// Replace all messages with the full normalized conversation
 			setMessages(result.messages);
+			onResponseMetadataRef.current?.(result.metadata);
 
 			// Fire tool call callback for the initial response.
 			fireToolCalls(result.messages);
@@ -378,6 +384,7 @@ export function useChat({
 					);
 
 					setMessages((prev) => [...prev, ...continuation.messages]);
+					onResponseMetadataRef.current?.(continuation.metadata);
 					for (const msg of continuation.messages) {
 						onMessage?.(msg);
 					}
