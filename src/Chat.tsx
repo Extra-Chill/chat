@@ -68,6 +68,8 @@ export interface ChatProps {
 	 * mutates server state).
 	 */
 	onToolCalls?: (toolCalls: ToolCall[]) => void;
+	/** Called with response-level metadata returned by the backend. */
+	onResponseMetadata?: UseChatOptions['onResponseMetadata'];
 	/**
 	 * Session-list scope filter passed to the backend.
 	 *
@@ -199,6 +201,7 @@ export function Chat({
 	onError,
 	onMessage,
 	onToolCalls,
+	onResponseMetadata,
 	sessionContext,
 	className,
 	showSessions = true,
@@ -231,6 +234,7 @@ export function Chat({
 		onError,
 		onMessage,
 		onToolCalls,
+		onResponseMetadata,
 		sessionContext,
 		metadata,
 		mediaUploadFn,
