@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import type { ChatMessage } from '../types/index.ts';
 
 /**
@@ -16,6 +17,15 @@ export interface ToolGroup {
 	/** Whether the tool succeeded (null if pending). */
 	success: boolean | null;
 }
+
+export interface ToolRendererContext {
+	/** Send a follow-up user message. */
+	sendMessage: (content: string) => void;
+	/** Whether chat is currently processing a request. */
+	isLoading: boolean;
+}
+
+export type ToolRenderer = (group: ToolGroup, context: ToolRendererContext) => ReactNode;
 
 export interface ToolMessageProps {
 	/** The tool call/result group to display. */

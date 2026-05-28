@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useRef } from 'react';
 import type { ChatMessage as ChatMessageType, ContentFormat, ToolCall } from './types/index.ts';
 import type { FetchFn, MediaUploadFn } from './api.ts';
-import type { ToolGroup } from './components/ToolMessage.tsx';
+import type { ToolRenderer } from './components/ToolMessage.tsx';
 import { useChat, type UseChatOptions } from './hooks/useChat.ts';
 import { useLoadingMessages, type LoadingMessagesConfig } from './hooks/useLoadingMessages.ts';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
@@ -45,7 +45,7 @@ export interface ChatProps {
 	 * matches a registered name, the custom renderer is used instead of
 	 * the default ToolMessage JSON display.
 	 */
-	toolRenderers?: Record<string, (group: ToolGroup) => ReactNode>;
+	toolRenderers?: Record<string, ToolRenderer>;
 	/** Placeholder text for the input. */
 	placeholder?: string;
 	/** Content shown when conversation is empty. */
@@ -333,6 +333,10 @@ export function Chat({
 					showTools={showTools}
 					toolNames={toolNames}
 					toolRenderers={toolRenderers}
+					toolRendererContext={{
+						sendMessage: chat.sendMessage,
+						isLoading: chat.isLoading,
+					}}
 					emptyState={resolvedEmptyState}
 					footer={typingIndicator}
 				/>
