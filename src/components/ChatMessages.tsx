@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import type { ChatMessage as ChatMessageType, ContentFormat } from '../types/index.ts';
 import { ChatMessage } from './ChatMessage.tsx';
-import { ToolMessage, type ToolGroup } from './ToolMessage.tsx';
+import { ToolMessage, type ToolGroup, type ToolRenderer, type ToolRendererContext } from './ToolMessage.tsx';
 
 export interface ChatMessagesProps {
 	/** All messages in the conversation. */
@@ -29,7 +29,9 @@ export interface ChatMessagesProps {
 	 * }}
 	 * ```
 	 */
-	toolRenderers?: Record<string, (group: ToolGroup) => ReactNode>;
+	toolRenderers?: Record<string, ToolRenderer>;
+	/** Action context passed to custom tool renderers. */
+	toolRendererContext?: ToolRendererContext;
 	/** Whether to auto-scroll to bottom on new messages. Defaults to true. */
 	autoScroll?: boolean;
 	/** Placeholder content shown when there are no messages. */
@@ -53,6 +55,7 @@ export function ChatMessages({
 	showTools = false,
 	toolNames,
 	toolRenderers,
+	toolRendererContext,
 	autoScroll = true,
 	emptyState,
 	footer,
@@ -75,6 +78,10 @@ export function ChatMessages({
 	const displayItems = buildDisplayItems(messages, showTools);
 	const baseClass = 'ec-chat-messages';
 	const classes = [baseClass, className].filter(Boolean).join(' ');
+	const rendererContext = toolRendererContext ?? {
+		sendMessage: () => {},
+		isLoading: false,
+	};
 
 	if (displayItems.length === 0 && emptyState) {
 		return (
@@ -107,7 +114,7 @@ export function ChatMessages({
 					if (customRenderer) {
 						return (
 							<div key={item.group.callMessage.id}>
-								{customRenderer(item.group)}
+								{customRenderer(item.group, rendererContext)}
 							</div>
 						);
 					}

@@ -84,7 +84,15 @@ export {
 	ToolMessage,
 	type ToolMessageProps,
 	type ToolGroup,
+	type ToolRenderer,
+	type ToolRendererContext,
 } from './components/ToolMessage.tsx';
+
+export {
+	QuestionCard,
+	type QuestionCardProps,
+	type QuestionChoice,
+} from './components/QuestionCard.tsx';
 
 export {
 	DiffCard,
