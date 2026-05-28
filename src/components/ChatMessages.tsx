@@ -150,6 +150,12 @@ type DisplayItem =
 function buildDisplayItems(messages: ChatMessageType[], showTools: boolean): DisplayItem[] {
 	const items: DisplayItem[] = [];
 	const toolResultMap = new Map<string, ChatMessageType>();
+	const pendingStandaloneToolGroups: DisplayItem[] = [];
+	const flushPendingStandaloneTools = () => {
+		if (pendingStandaloneToolGroups.length === 0) return;
+		items.push(...pendingStandaloneToolGroups);
+		pendingStandaloneToolGroups.length = 0;
+	};
 
 	// Pre-index tool results by tool name for pairing
 	if (showTools) {
@@ -171,6 +177,12 @@ function buildDisplayItems(messages: ChatMessageType[], showTools: boolean): Dis
 
 		// Handle user/assistant messages (assistant messages with toolCalls get both treatments)
 		if (msg.role === 'user' || msg.role === 'assistant') {
+			// Standalone tool envelopes often precede the assistant's follow-up text.
+			// Keep their rendered cards attached to that response instead of jumping above it.
+			if (msg.role === 'user') {
+				flushPendingStandaloneTools();
+			}
+
 			// If assistant message has tool calls, render the text part as a message
 			// and the tool calls as tool groups
 			if (msg.role === 'assistant' && msg.toolCalls?.length && showTools) {
@@ -203,6 +215,10 @@ function buildDisplayItems(messages: ChatMessageType[], showTools: boolean): Dis
 			} else {
 				items.push({ type: 'message', message: msg });
 			}
+
+			if (msg.role === 'assistant') {
+				flushPendingStandaloneTools();
+			}
 			continue;
 		}
 
@@ -214,7 +230,7 @@ function buildDisplayItems(messages: ChatMessageType[], showTools: boolean): Dis
 				processedToolResults.add(resultMsg.id);
 			}
 
-			items.push({
+			pendingStandaloneToolGroups.push({
 				type: 'tool-group',
 				group: {
 					callMessage: msg,
@@ -229,6 +245,7 @@ function buildDisplayItems(messages: ChatMessageType[], showTools: boolean): Dis
 
 		// Handle orphaned tool_result messages
 		if (msg.role === 'tool_result' && showTools && !processedToolResults.has(msg.id)) {
+			flushPendingStandaloneTools();
 			items.push({
 				type: 'tool-group',
 				group: {
@@ -241,6 +258,8 @@ function buildDisplayItems(messages: ChatMessageType[], showTools: boolean): Dis
 			});
 		}
 	}
+
+	flushPendingStandaloneTools();
 
 	return items;
 }

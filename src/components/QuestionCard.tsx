@@ -24,6 +24,8 @@ export interface QuestionCardProps {
 	onSubmitAnswer: (answer: string) => void;
 	/** Whether controls are disabled. */
 	disabled?: boolean;
+	/** Hide the card after the user submits an answer. Defaults to true. */
+	autoHideOnSubmit?: boolean;
 	/** Additional CSS class name. */
 	className?: string;
 }
@@ -40,18 +42,33 @@ export function QuestionCard({
 	freeformPlaceholder = 'Type your answer...',
 	onSubmitAnswer,
 	disabled = false,
+	autoHideOnSubmit = true,
 	className,
 }: QuestionCardProps) {
 	const [freeformAnswer, setFreeformAnswer] = useState('');
+	const [submitted, setSubmitted] = useState(false);
 	const baseClass = 'ec-chat-question';
 	const classes = [baseClass, className].filter(Boolean).join(' ');
+	const controlsDisabled = disabled || submitted;
+
+	function submitAnswer(answer: string) {
+		if (!answer.trim() || controlsDisabled) return;
+		onSubmitAnswer(answer);
+		if (autoHideOnSubmit) {
+			setSubmitted(true);
+		}
+	}
 
 	function handleSubmit(event: FormEvent) {
 		event.preventDefault();
 		const answer = freeformAnswer.trim();
-		if (!answer || disabled) return;
-		onSubmitAnswer(answer);
+		if (!answer || controlsDisabled) return;
+		submitAnswer(answer);
 		setFreeformAnswer('');
+	}
+
+	if (submitted && autoHideOnSubmit) {
+		return null;
 	}
 
 	return (
@@ -64,8 +81,8 @@ export function QuestionCard({
 							key={`${choice.label}-${index}`}
 							className={`${baseClass}__choice`}
 							type="button"
-							onClick={() => onSubmitAnswer(choice.message ?? choice.label)}
-							disabled={disabled}
+							onClick={() => submitAnswer(choice.message ?? choice.label)}
+							disabled={controlsDisabled}
 						>
 							<span className={`${baseClass}__choice-label`}>{choice.label}</span>
 							{choice.description && (
@@ -85,10 +102,10 @@ export function QuestionCard({
 							value={freeformAnswer}
 							onChange={(event) => setFreeformAnswer(event.target.value)}
 							placeholder={freeformPlaceholder}
-							disabled={disabled}
+							disabled={controlsDisabled}
 						/>
 					</label>
-					<button className={`${baseClass}__freeform-submit`} type="submit" disabled={disabled || !freeformAnswer.trim()}>
+					<button className={`${baseClass}__freeform-submit`} type="submit" disabled={controlsDisabled || !freeformAnswer.trim()}>
 						Send
 					</button>
 				</form>
