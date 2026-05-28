@@ -65,6 +65,28 @@ Override CSS custom properties on `.ec-chat` to match your design system:
 }
 ```
 
+## Message Suggestions
+
+Pass `messageSuggestions` to offer optional prompt starters on fresh conversations. Selecting one sends its `message`, or its `label` when `message` is omitted.
+
+```tsx
+<Chat
+  basePath="/datamachine/v1/chat"
+  fetchFn={apiFetch}
+  messageSuggestions={[
+    {
+      label: 'Plan my homepage',
+      message: 'Help me plan the homepage for my site.',
+      description: 'Start with goals and sections',
+    },
+    {
+      label: 'Write an about page',
+      message: 'Help me draft a friendly about page.',
+    },
+  ]}
+/>
+```
+
 ## Consumers
 
 - **extrachill-studio** — Studio Chat tab (agent_id=5)
