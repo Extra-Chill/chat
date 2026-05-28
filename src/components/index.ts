@@ -5,5 +5,6 @@ export { ToolMessage, type ToolMessageProps, type ToolGroup } from './ToolMessag
 export { DiffCard, type DiffCardProps, type DiffData } from './DiffCard.tsx';
 export { TypingIndicator, type TypingIndicatorProps } from './TypingIndicator.tsx';
 export { SessionSwitcher, type SessionSwitcherProps } from './SessionSwitcher.tsx';
+export { MessageSuggestions, type ChatMessageSuggestion, type MessageSuggestionsProps } from './MessageSuggestions.tsx';
 export { ErrorBoundary, type ErrorBoundaryProps } from './ErrorBoundary.tsx';
 export { AvailabilityGate, type AvailabilityGateProps } from './AvailabilityGate.tsx';

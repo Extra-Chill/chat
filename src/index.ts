@@ -103,6 +103,12 @@ export {
 } from './components/SessionSwitcher.tsx';
 
 export {
+	MessageSuggestions,
+	type ChatMessageSuggestion,
+	type MessageSuggestionsProps,
+} from './components/MessageSuggestions.tsx';
+
+export {
 	AgentSwitcher,
 	type AgentSwitcherAgent,
 	type AgentSwitcherProps,

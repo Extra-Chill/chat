@@ -10,6 +10,7 @@ import { ChatMessages } from './components/ChatMessages.tsx';
 import { ChatInput } from './components/ChatInput.tsx';
 import { TypingIndicator } from './components/TypingIndicator.tsx';
 import { SessionSwitcher } from './components/SessionSwitcher.tsx';
+import { MessageSuggestions, type ChatMessageSuggestion } from './components/MessageSuggestions.tsx';
 import type { UseChatReturn } from './hooks/useChat.ts';
 
 export type ChatSessionUi = 'list' | 'none';
@@ -49,6 +50,10 @@ export interface ChatProps {
 	placeholder?: string;
 	/** Content shown when conversation is empty. */
 	emptyState?: ReactNode;
+	/** Suggested messages shown when the conversation is empty. */
+	messageSuggestions?: ChatMessageSuggestion[];
+	/** Accessible label for suggested messages. */
+	messageSuggestionsLabel?: string;
 	/** Initial messages (hydrated from server). */
 	initialMessages?: ChatMessageType[];
 	/** Initial session ID. */
@@ -195,6 +200,8 @@ export function Chat({
 	toolRenderers,
 	placeholder,
 	emptyState,
+	messageSuggestions,
+	messageSuggestionsLabel,
 	initialMessages,
 	initialSessionId,
 	maxContinueTurns,
@@ -271,6 +278,20 @@ export function Chat({
 
 	const baseClass = 'ec-chat';
 	const classes = [baseClass, className].filter(Boolean).join(' ');
+	const resolvedMessageSuggestions = messageSuggestions ?? [];
+	const hasVisibleMessages = chat.messages.some((message) => message.role !== 'system');
+	const showMessageSuggestions = resolvedMessageSuggestions.length > 0 && !hasVisibleMessages;
+	const resolvedEmptyState = showMessageSuggestions ? (
+		<div className={`${baseClass}__empty-with-suggestions`}>
+			{emptyState}
+			<MessageSuggestions
+				suggestions={resolvedMessageSuggestions}
+				onSelect={(suggestion) => chat.sendMessage(suggestion.message ?? suggestion.label)}
+				label={messageSuggestionsLabel}
+				disabled={chat.isLoading}
+			/>
+		</div>
+	) : emptyState;
 	const typingIndicator = useMemo(() => (
 		<TypingIndicator
 			visible={chat.isLoading}
@@ -312,7 +333,7 @@ export function Chat({
 					showTools={showTools}
 					toolNames={toolNames}
 					toolRenderers={toolRenderers}
-					emptyState={emptyState}
+					emptyState={resolvedEmptyState}
 					footer={typingIndicator}
 				/>
 
