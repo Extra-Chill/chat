@@ -31,6 +31,7 @@ export interface RawMessage {
 		timestamp?: string;
 		type?: 'text' | 'multimodal' | 'tool_call' | 'tool_result';
 		tool_name?: string;
+		tool_call_id?: string;
 		parameters?: Record<string, unknown>;
 		success?: boolean;
 		error?: string;
@@ -42,6 +43,7 @@ export interface RawMessage {
 		media?: RawAttachment[];
 	};
 	tool_calls?: Array<{
+		id?: string;
 		tool_name: string;
 		parameters: Record<string, unknown>;
 	}>;

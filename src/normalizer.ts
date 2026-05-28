@@ -25,11 +25,14 @@ export function normalizeMessage(raw: RawMessage, index: number): ChatMessage {
 
 	if (type === 'tool_call') {
 		const toolCalls: ToolCall[] = [];
+		const metadataToolCallId = typeof raw.metadata?.tool_call_id === 'string' && raw.metadata.tool_call_id
+			? raw.metadata.tool_call_id
+			: null;
 
 		// Extract from metadata (single tool call)
 		if (raw.metadata?.tool_name) {
 			toolCalls.push({
-				id: `tc_${index}_${raw.metadata.tool_name}`,
+				id: metadataToolCallId ?? `tc_${index}_${raw.metadata.tool_name}`,
 				name: raw.metadata.tool_name,
 				parameters: raw.metadata.parameters ?? {},
 			});
@@ -39,9 +42,9 @@ export function normalizeMessage(raw: RawMessage, index: number): ChatMessage {
 		if (raw.tool_calls?.length) {
 			for (const tc of raw.tool_calls) {
 				// Avoid duplicates
-				if (!toolCalls.some((t) => t.name === tc.tool_name)) {
+				if (!toolCalls.some((t) => t.id === tc.id || t.name === tc.tool_name)) {
 					toolCalls.push({
-						id: `tc_${index}_${tc.tool_name}`,
+						id: tc.id ?? `tc_${index}_${tc.tool_name}`,
 						name: tc.tool_name,
 						parameters: tc.parameters ?? {},
 					});
@@ -66,6 +69,9 @@ export function normalizeMessage(raw: RawMessage, index: number): ChatMessage {
 			timestamp,
 			toolResult: {
 				toolName: raw.metadata?.tool_name ?? 'unknown',
+				toolCallId: typeof raw.metadata?.tool_call_id === 'string' && raw.metadata.tool_call_id
+					? raw.metadata.tool_call_id
+					: undefined,
 				success: raw.metadata?.success ?? false,
 			},
 		};
@@ -88,7 +94,7 @@ export function normalizeMessage(raw: RawMessage, index: number): ChatMessage {
 	// Assistant messages may carry tool_calls at the top level
 	if (raw.role === 'assistant' && raw.tool_calls?.length) {
 		message.toolCalls = raw.tool_calls.map((tc, i) => ({
-			id: `tc_${index}_${i}_${tc.tool_name}`,
+			id: tc.id ?? `tc_${index}_${i}_${tc.tool_name}`,
 			name: tc.tool_name,
 			parameters: tc.parameters ?? {},
 		}));

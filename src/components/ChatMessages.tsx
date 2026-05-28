@@ -160,8 +160,8 @@ function buildDisplayItems(messages: ChatMessageType[], showTools: boolean): Dis
 	// Pre-index tool results by tool name for pairing
 	if (showTools) {
 		for (const msg of messages) {
-			if (msg.role === 'tool_result' && msg.toolResult?.toolName) {
-				toolResultMap.set(msg.toolResult.toolName, msg);
+			if (msg.role === 'tool_result' && msg.toolResult) {
+				toolResultMap.set(toolResultKey(msg.toolResult.toolCallId, msg.toolResult.toolName), msg);
 			}
 		}
 	}
@@ -192,7 +192,7 @@ function buildDisplayItems(messages: ChatMessageType[], showTools: boolean): Dis
 				}
 
 				for (const call of msg.toolCalls) {
-					const resultMsg = toolResultMap.get(call.name);
+					const resultMsg = toolResultMap.get(toolResultKey(call.id, call.name));
 					if (resultMsg) {
 						processedToolResults.add(resultMsg.id);
 					}
@@ -225,7 +225,8 @@ function buildDisplayItems(messages: ChatMessageType[], showTools: boolean): Dis
 		// Handle standalone tool_call messages
 		if (msg.role === 'tool_call' && showTools) {
 			const toolName = msg.toolCalls?.[0]?.name ?? 'unknown';
-			const resultMsg = toolResultMap.get(toolName);
+			const toolCallId = msg.toolCalls?.[0]?.id;
+			const resultMsg = toolResultMap.get(toolResultKey(toolCallId, toolName));
 			if (resultMsg) {
 				processedToolResults.add(resultMsg.id);
 			}
@@ -262,4 +263,8 @@ function buildDisplayItems(messages: ChatMessageType[], showTools: boolean): Dis
 	flushPendingStandaloneTools();
 
 	return items;
+}
+
+function toolResultKey(toolCallId: string | undefined, toolName: string): string {
+	return toolCallId ? `id:${toolCallId}` : `name:${toolName}`;
 }

@@ -34,6 +34,8 @@ export interface ToolCall {
 export interface ToolResultMeta {
 	/** The tool that produced this result. */
 	toolName: string;
+	/** Tool call ID this result answers, when provided by the backend. */
+	toolCallId?: string;
 	/** Whether the tool call succeeded. */
 	success: boolean;
 }
