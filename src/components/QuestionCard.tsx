@@ -24,7 +24,7 @@ export interface QuestionCardProps {
 	onSubmitAnswer: (answer: string) => void;
 	/** Whether controls are disabled. */
 	disabled?: boolean;
-	/** Hide the card after the user submits an answer. Defaults to true. */
+	/** Collapse choices after the user submits an answer. Defaults to true. */
 	autoHideOnSubmit?: boolean;
 	/** Additional CSS class name. */
 	className?: string;
@@ -46,16 +46,20 @@ export function QuestionCard({
 	className,
 }: QuestionCardProps) {
 	const [freeformAnswer, setFreeformAnswer] = useState('');
-	const [submitted, setSubmitted] = useState(false);
+	const [submittedAnswer, setSubmittedAnswer] = useState<string | null>(null);
+	const [showChoices, setShowChoices] = useState(false);
 	const baseClass = 'ec-chat-question';
 	const classes = [baseClass, className].filter(Boolean).join(' ');
+	const submitted = submittedAnswer !== null;
 	const controlsDisabled = disabled || submitted;
 
 	function submitAnswer(answer: string) {
-		if (!answer.trim() || controlsDisabled) return;
-		onSubmitAnswer(answer);
+		const nextAnswer = answer.trim();
+		if (!nextAnswer || controlsDisabled) return;
+		onSubmitAnswer(nextAnswer);
 		if (autoHideOnSubmit) {
-			setSubmitted(true);
+			setSubmittedAnswer(nextAnswer);
+			setShowChoices(false);
 		}
 	}
 
@@ -68,7 +72,47 @@ export function QuestionCard({
 	}
 
 	if (submitted && autoHideOnSubmit) {
-		return null;
+		return (
+			<div className={`${classes} ${baseClass}--submitted`}>
+				<div className={`${baseClass}__submitted-header`}>
+					<div className={`${baseClass}__prompt`}>{question}</div>
+					{choices.length > 0 && (
+						<button
+							className={`${baseClass}__toggle`}
+							type="button"
+							onClick={() => setShowChoices((expanded) => !expanded)}
+							aria-expanded={showChoices}
+						>
+							{showChoices ? 'Hide choices' : 'Show choices'}
+						</button>
+					)}
+				</div>
+				<div className={`${baseClass}__submitted-answer`}>
+					<span className={`${baseClass}__submitted-check`} aria-hidden="true">✓</span>
+					<span>{submittedAnswer}</span>
+				</div>
+				{showChoices && choices.length > 0 && (
+					<div className={`${baseClass}__choices ${baseClass}__choices--readonly`} role="list" aria-label={question}>
+						{choices.map((choice, index) => {
+							const value = choice.message ?? choice.label;
+							const selected = value === submittedAnswer;
+							return (
+								<div
+									key={`${choice.label}-${index}`}
+									className={`${baseClass}__choice ${baseClass}__choice--readonly${selected ? ` ${baseClass}__choice--selected` : ''}`}
+									role="listitem"
+								>
+									<span className={`${baseClass}__choice-label`}>{choice.label}</span>
+									{choice.description && (
+										<span className={`${baseClass}__choice-description`}>{choice.description}</span>
+									)}
+								</div>
+							);
+						})}
+					</div>
+				)}
+			</div>
+		);
 	}
 
 	return (
