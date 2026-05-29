@@ -13,6 +13,24 @@ import {
 	markSessionRead as apiMarkSessionRead,
 } from '../api.ts';
 
+export interface ChatRunCapabilities {
+	/** Whether the current backend adapter can cancel an active run. */
+	cancel?: boolean;
+	/** Whether the current backend adapter can queue follow-up messages. */
+	queue?: boolean;
+}
+
+export interface CancelRunInput {
+	runId: string;
+	sessionId: string;
+}
+
+export interface QueueMessageInput {
+	sessionId: string;
+	content: string;
+	files?: File[];
+}
+
 /**
  * Configuration for the useChat hook.
  */
@@ -76,6 +94,16 @@ export interface UseChatOptions {
 	 * in the composed Chat component) because files cannot be processed.
 	 */
 	mediaUploadFn?: MediaUploadFn;
+	/** Optional long-running turn capabilities supplied by the backend adapter. */
+	runCapabilities?: ChatRunCapabilities;
+	/** Active backend run ID, when the adapter already knows it. */
+	activeRunId?: string | null;
+	/** Extract a backend run ID from response metadata. */
+	getRunId?: (metadata: Record<string, unknown>) => string | null | undefined;
+	/** Cancel the active backend run. Called only when `runCapabilities.cancel` is enabled. */
+	onCancelRun?: (input: CancelRunInput) => Promise<void> | void;
+	/** Queue a follow-up message. Called only when `runCapabilities.queue` is enabled. */
+	onQueueMessage?: (input: QueueMessageInput) => Promise<void> | void;
 	/**
 	 * Optional context filter for session listing.
 	 * Only sessions created in the matching context are shown.
@@ -91,6 +119,8 @@ export interface UseChatReturn {
 	messages: ChatMessage[];
 	/** Whether a message is being sent/processed. */
 	isLoading: boolean;
+	/** Whether cancellation is currently being requested. */
+	isCancelling: boolean;
 	/** Current continuation turn count (0 when not processing). */
 	turnCount: number;
 	/** Current availability state. */
@@ -104,6 +134,14 @@ export interface UseChatReturn {
 	 * Null when idle.
 	 */
 	processingSessionId: string | null;
+	/** Active backend run ID, when supplied by the adapter or response metadata. */
+	activeRunId: string | null;
+	/** Configured long-running turn capabilities. */
+	runCapabilities: ChatRunCapabilities;
+	/** Whether the active run can be cancelled right now. */
+	canCancelRun: boolean;
+	/** Whether follow-up messages can be queued right now. */
+	canQueueMessage: boolean;
 	/** List of sessions. */
 	sessions: ChatSession[];
 	/** Whether sessions are loading. */
@@ -114,6 +152,8 @@ export interface UseChatReturn {
 	totalUnreadCount: number;
 	/** Send a user message (with optional file attachments). */
 	sendMessage: (content: string, files?: File[]) => void;
+	/** Cancel the active run when the adapter supports it. */
+	cancelRun: () => Promise<void>;
 	/** Switch to a different session. */
 	switchSession: (sessionId: string) => void;
 	/** Create a new session. */
@@ -189,14 +229,21 @@ export function useChat({
 	onResponseMetadata,
 	metadata,
 	mediaUploadFn,
+	runCapabilities,
+	activeRunId,
+	getRunId,
+	onCancelRun,
+	onQueueMessage,
 	sessionContext,
 }: UseChatOptions): UseChatReturn {
 	const [messages, setMessages] = useState<ChatMessage[]>(initialMessages ?? []);
 	const [isLoading, setIsLoading] = useState(false);
+	const [isCancelling, setIsCancelling] = useState(false);
 	const [turnCount, setTurnCount] = useState(0);
 	const [availability, setAvailability] = useState<ChatAvailability>({ status: 'ready' });
 	const [sessionId, setSessionId] = useState<string | null>(initialSessionId ?? null);
 	const [processingSessionId, setProcessingSessionId] = useState<string | null>(null);
+	const [metadataRunId, setMetadataRunId] = useState<string | null>(null);
 	const [sessions, setSessions] = useState<ChatSession[]>([]);
 	const [sessionsLoading, setSessionsLoading] = useState(false);
 
@@ -204,6 +251,21 @@ export function useChat({
 	const totalUnreadCount = sessions.reduce((sum, s) => sum + (s.unreadCount ?? 0), 0);
 	const activeSession = sessionId ? sessions.find((s) => s.id === sessionId) : undefined;
 	const unreadCount = activeSession?.unreadCount ?? 0;
+	const resolvedRunCapabilities = runCapabilities ?? {};
+	const resolvedActiveRunId = activeRunId ?? metadataRunId;
+	const canCancelRun = !!(
+		isLoading &&
+		resolvedRunCapabilities.cancel &&
+		onCancelRun &&
+		resolvedActiveRunId &&
+		sessionId
+	);
+	const canQueueMessage = !!(
+		isLoading &&
+		resolvedRunCapabilities.queue &&
+		onQueueMessage &&
+		sessionId
+	);
 
 	// Build API config from props
 	const configRef = useRef<ChatApiConfig>({ basePath, fetchFn, agentId });
@@ -221,11 +283,31 @@ export function useChat({
 	metadataRef.current = metadata;
 	const mediaUploadFnRef = useRef(mediaUploadFn);
 	mediaUploadFnRef.current = mediaUploadFn;
+	const runCapabilitiesRef = useRef(resolvedRunCapabilities);
+	runCapabilitiesRef.current = resolvedRunCapabilities;
+	const activeRunIdRef = useRef(resolvedActiveRunId);
+	activeRunIdRef.current = resolvedActiveRunId;
+	const getRunIdRef = useRef(getRunId);
+	getRunIdRef.current = getRunId;
+	const onCancelRunRef = useRef(onCancelRun);
+	onCancelRunRef.current = onCancelRun;
+	const onQueueMessageRef = useRef(onQueueMessage);
+	onQueueMessageRef.current = onQueueMessage;
 	const sessionContextRef = useRef(sessionContext);
 	sessionContextRef.current = sessionContext;
 	// Guard against concurrent session creation.
 	const isCreatingRef = useRef(false);
 	const hasInitialMessagesRef = useRef((initialMessages?.length ?? 0) > 0);
+	const activeRequestIdRef = useRef(0);
+	const cancelledRequestIdRef = useRef<number | null>(null);
+
+	const applyResponseMetadata = useCallback((responseMetadata: Record<string, unknown>) => {
+		onResponseMetadataRef.current?.(responseMetadata);
+		const runId = getRunIdRef.current?.(responseMetadata);
+		if (runId !== undefined) {
+			setMetadataRunId(runId);
+		}
+	}, []);
 
 	// Load sessions on mount
 	useEffect(() => {
@@ -278,7 +360,45 @@ export function useChat({
 	}, []);
 
 	const sendMessage = useCallback(async (content: string, files?: File[]) => {
-		if (isLoading || isCreatingRef.current) return;
+		if (isLoading) {
+			const currentSessionId = sessionIdRef.current;
+			const queueMessage = onQueueMessageRef.current;
+			if (!runCapabilitiesRef.current.queue || !queueMessage || !currentSessionId) return;
+
+			const queuedMessage: ChatMessage = {
+				id: generateMessageId(),
+				role: 'user',
+				content,
+				timestamp: new Date().toISOString(),
+				deliveryStatus: 'queued',
+			};
+
+			setMessages((prev) => [...prev, queuedMessage]);
+			onMessage?.(queuedMessage);
+
+			try {
+				await queueMessage({
+					sessionId: currentSessionId,
+					content,
+					files,
+				});
+			} catch (err) {
+				const error = toError(err);
+				onError?.(error);
+				setMessages((prev) => prev.map((message) => (
+					message.id === queuedMessage.id
+						? { ...message, deliveryStatus: 'failed' }
+						: message
+				)));
+			}
+			return;
+		}
+
+		if (isCreatingRef.current) return;
+
+		const requestId = activeRequestIdRef.current + 1;
+		activeRequestIdRef.current = requestId;
+		cancelledRequestIdRef.current = null;
 
 		// Build optimistic attachment previews from local files.
 		let optimisticAttachments: MediaAttachment[] | undefined;
@@ -355,6 +475,8 @@ export function useChat({
 				metadataRef.current,
 			);
 
+			if (cancelledRequestIdRef.current === requestId || activeRequestIdRef.current !== requestId) return;
+
 			isCreatingRef.current = false;
 
 			// Update session ID (may be newly created)
@@ -364,7 +486,7 @@ export function useChat({
 
 			// Replace all messages with the full normalized conversation
 			setMessages(result.messages);
-			onResponseMetadataRef.current?.(result.metadata);
+			applyResponseMetadata(result.metadata);
 
 			// Fire tool call callback for the initial response.
 			fireToolCalls(result.messages);
@@ -375,6 +497,7 @@ export function useChat({
 				let turns = 0;
 
 				while (!completed && turns < maxContinueTurns) {
+					if (cancelledRequestIdRef.current === requestId || activeRequestIdRef.current !== requestId) break;
 					turns++;
 					setTurnCount(turns);
 
@@ -383,8 +506,10 @@ export function useChat({
 						result.sessionId,
 					);
 
+					if (cancelledRequestIdRef.current === requestId || activeRequestIdRef.current !== requestId) break;
+
 					setMessages((prev) => [...prev, ...continuation.messages]);
-					onResponseMetadataRef.current?.(continuation.metadata);
+					applyResponseMetadata(continuation.metadata);
 					for (const msg of continuation.messages) {
 						onMessage?.(msg);
 					}
@@ -420,11 +545,39 @@ export function useChat({
 			};
 			setMessages((prev) => [...prev, errorMessage]);
 		} finally {
+			if (activeRequestIdRef.current === requestId) {
+				setIsLoading(false);
+				setTurnCount(0);
+				setProcessingSessionId(null);
+				setMetadataRunId(null);
+			}
+		}
+	}, [isLoading, maxContinueTurns, onMessage, onError, fireToolCalls, applyResponseMetadata]);
+
+	const cancelRun = useCallback(async () => {
+		const cancelRunCallback = onCancelRunRef.current;
+		const runId = activeRunIdRef.current;
+		const currentSessionId = sessionIdRef.current;
+		if (!cancelRunCallback || !runCapabilitiesRef.current.cancel || !runId || !currentSessionId) return;
+
+		setIsCancelling(true);
+		const cancelledRequestId = activeRequestIdRef.current;
+		cancelledRequestIdRef.current = cancelledRequestId;
+
+		try {
+			await cancelRunCallback({ runId, sessionId: currentSessionId });
+			activeRequestIdRef.current = cancelledRequestId + 1;
 			setIsLoading(false);
 			setTurnCount(0);
 			setProcessingSessionId(null);
+			setMetadataRunId(null);
+		} catch (err) {
+			cancelledRequestIdRef.current = null;
+			onError?.(toError(err));
+		} finally {
+			setIsCancelling(false);
 		}
-	}, [isLoading, maxContinueTurns, onMessage, onError, fireToolCalls]);
+	}, [onError]);
 
 	const switchSession = useCallback(async (newSessionId: string) => {
 		setSessionId(newSessionId);
@@ -504,15 +657,21 @@ export function useChat({
 	return {
 		messages,
 		isLoading,
+		isCancelling,
 		turnCount,
 		availability,
 		sessionId,
 		processingSessionId,
+		activeRunId: resolvedActiveRunId,
+		runCapabilities: resolvedRunCapabilities,
+		canCancelRun,
+		canQueueMessage,
 		sessions,
 		sessionsLoading,
 		unreadCount,
 		totalUnreadCount,
 		sendMessage,
+		cancelRun,
 		switchSession,
 		newSession,
 		deleteSession: deleteSessionHandler,

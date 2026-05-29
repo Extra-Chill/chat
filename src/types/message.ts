@@ -80,6 +80,8 @@ export interface ChatMessage {
 	toolResult?: ToolResultMeta;
 	/** Media attachments (images, videos, files) on this message. */
 	attachments?: MediaAttachment[];
+	/** Client-side delivery state for optimistic messages. */
+	deliveryStatus?: 'queued' | 'failed';
 }
 
 /**

@@ -33,7 +33,8 @@ export function ChatMessage({
 	const isUser = message.role === 'user';
 	const baseClass = 'ec-chat-message';
 	const roleClass = isUser ? `${baseClass}--user` : `${baseClass}--assistant`;
-	const classes = [baseClass, roleClass, className].filter(Boolean).join(' ');
+	const statusClass = message.deliveryStatus ? `${baseClass}--${message.deliveryStatus}` : '';
+	const classes = [baseClass, roleClass, statusClass, className].filter(Boolean).join(' ');
 
 	const hasText = message.content.trim().length > 0;
 	const hasAttachments = message.attachments && message.attachments.length > 0;
@@ -58,6 +59,11 @@ export function ChatMessage({
 				>
 					{formatTime(message.timestamp)}
 				</time>
+			)}
+			{message.deliveryStatus && (
+				<span className={`${baseClass}__status`}>
+					{message.deliveryStatus === 'queued' ? 'Queued' : 'Failed'}
+				</span>
 			)}
 		</div>
 	);

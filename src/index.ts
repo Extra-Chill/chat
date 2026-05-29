@@ -135,6 +135,9 @@ export {
 // Hooks
 export {
 	useChat,
+	type CancelRunInput,
+	type ChatRunCapabilities,
+	type QueueMessageInput,
 	type UseChatOptions,
 	type UseChatReturn,
 } from './hooks/useChat.ts';

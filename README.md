@@ -87,6 +87,45 @@ Pass `messageSuggestions` to offer optional prompt starters on fresh conversatio
 />
 ```
 
+## Long-Running Turns
+
+Backends that support long-running chat turns can opt into stop and queue UI without changing the default behavior. When no capability is provided, the input is disabled while a response is loading, matching earlier releases.
+
+```tsx
+<Chat
+  basePath="/chat"
+  fetchFn={fetchChatJson}
+  initialSessionId="session-123"
+  runCapabilities={{ cancel: true, queue: true }}
+  activeRunId={activeRunId}
+  onCancelRun={async ({ runId, sessionId }) => {
+    await cancelRun({ runId, sessionId });
+  }}
+  onQueueMessage={async ({ sessionId, content, files }) => {
+    await queueMessage({ sessionId, content, files });
+  }}
+/>
+```
+
+Capability behavior:
+
+- No support: input and message suggestions stay disabled while loading.
+- Cancel support: a stop control appears while loading once both `activeRunId` and `sessionId` are available.
+- Queue support: input and message suggestions stay usable while loading and submitted messages render optimistically with a queued state.
+- Cancel + queue support: both controls are enabled together.
+
+If a backend returns run IDs in response metadata, adapters can expose them generically through `getRunId`:
+
+```tsx
+<Chat
+  basePath="/chat"
+  fetchFn={fetchChatJson}
+  runCapabilities={{ cancel: true }}
+  getRunId={(metadata) => typeof metadata.run_id === 'string' ? metadata.run_id : null}
+  onCancelRun={cancelRun}
+/>
+```
+
 ## Consumers
 
 - **extrachill-studio** — Studio Chat tab (agent_id=5)
