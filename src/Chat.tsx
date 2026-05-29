@@ -319,13 +319,13 @@ export function Chat({
 		<TypingIndicator
 			visible={chat.isLoading}
 			label={
-				chat.turnCount > 0
+				hasLoadingMessages
+					? cycling.message
+					: chat.turnCount > 0
 					? (processingLabel
 						? processingLabel(chat.turnCount)
 						: `Processing turn ${chat.turnCount}...`)
-					: hasLoadingMessages
-						? cycling.message
-						: undefined
+					: undefined
 			}
 		/>
 	), [chat.isLoading, chat.turnCount, processingLabel, hasLoadingMessages, cycling.message]);
