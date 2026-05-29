@@ -3,8 +3,16 @@ import { useState, useRef, useCallback, type KeyboardEvent, type FormEvent, type
 export interface ChatInputProps {
 	/** Called when the user submits a message (with optional file attachments). */
 	onSend: (content: string, files?: File[]) => void;
+	/** Called when the user requests cancellation of the active run. */
+	onCancel?: () => void;
 	/** Whether input is disabled (e.g. while waiting for response). */
 	disabled?: boolean;
+	/** Whether to show the stop/cancel control. */
+	showCancel?: boolean;
+	/** Whether cancellation is currently in progress. */
+	cancelLoading?: boolean;
+	/** Accessible label for the stop/cancel control. Defaults to 'Stop response'. */
+	cancelLabel?: string;
 	/** Placeholder text. Defaults to 'Type a message...'. */
 	placeholder?: string;
 	/** Maximum number of rows the textarea auto-grows to. Defaults to 6. */
@@ -29,7 +37,11 @@ export interface ChatInputProps {
  */
 export function ChatInput({
 	onSend,
+	onCancel,
 	disabled = false,
+	showCancel = false,
+	cancelLoading = false,
+	cancelLabel = 'Stop response',
 	placeholder = 'Type a message...',
 	maxRows = 6,
 	accept = 'image/*,video/*',
@@ -181,6 +193,18 @@ export function ChatInput({
 					rows={1}
 					aria-label={placeholder}
 				/>
+				{showCancel && (
+					<button
+						className={`${baseClass}__cancel`}
+						type="button"
+						onClick={onCancel}
+						disabled={cancelLoading}
+						aria-label={cancelLabel}
+						title={cancelLabel}
+					>
+						<StopIcon />
+					</button>
+				)}
 				<button
 					className={`${baseClass}__send`}
 					type="submit"
@@ -236,6 +260,14 @@ function SendIcon() {
 		>
 			<line x1="22" y1="2" x2="11" y2="13" />
 			<polygon points="22 2 15 22 11 13 2 9 22 2" />
+		</svg>
+	);
+}
+
+function StopIcon() {
+	return (
+		<svg className="ec-chat-input__stop-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+			<rect x="7" y="7" width="10" height="10" rx="1" fill="currentColor" stroke="none" />
 		</svg>
 	);
 }

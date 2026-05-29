@@ -139,6 +139,18 @@ export interface ChatProps {
 	 * ```
 	 */
 	mediaUploadFn?: MediaUploadFn;
+	/** Optional long-running turn capabilities supplied by the backend adapter. */
+	runCapabilities?: UseChatOptions['runCapabilities'];
+	/** Active backend run ID, when the adapter already knows it. */
+	activeRunId?: UseChatOptions['activeRunId'];
+	/** Extract a backend run ID from response metadata. */
+	getRunId?: UseChatOptions['getRunId'];
+	/** Cancel the active backend run. Called only when cancel support is enabled. */
+	onCancelRun?: UseChatOptions['onCancelRun'];
+	/** Queue a follow-up message. Called only when queue support is enabled. */
+	onQueueMessage?: UseChatOptions['onQueueMessage'];
+	/** Accessible label for the stop/cancel control. */
+	cancelLabel?: string;
 	/**
 	 * Arbitrary metadata forwarded to the backend with each message.
 	 * Use for client-side context injection (e.g. `{ client_context: { tab: 'compose', postId: 123 } }`).
@@ -220,6 +232,12 @@ export function Chat({
 	allowAttachments,
 	acceptFileTypes,
 	mediaUploadFn,
+	runCapabilities,
+	activeRunId,
+	getRunId,
+	onCancelRun,
+	onQueueMessage,
+	cancelLabel,
 	metadata,
 	showCopyTranscript = false,
 	copyTranscriptLabel,
@@ -245,6 +263,11 @@ export function Chat({
 		sessionContext,
 		metadata,
 		mediaUploadFn,
+		runCapabilities,
+		activeRunId,
+		getRunId,
+		onCancelRun,
+		onQueueMessage,
 	});
 
 	// Fire onUnreadChange whenever totalUnreadCount changes.
@@ -288,7 +311,7 @@ export function Chat({
 				suggestions={resolvedMessageSuggestions}
 				onSelect={(suggestion) => chat.sendMessage(suggestion.message ?? suggestion.label)}
 				label={messageSuggestionsLabel}
-				disabled={chat.isLoading}
+				disabled={chat.isLoading && !chat.canQueueMessage}
 			/>
 		</div>
 	) : emptyState;
@@ -343,7 +366,11 @@ export function Chat({
 
 					<ChatInput
 						onSend={chat.sendMessage}
-						disabled={chat.isLoading}
+						onCancel={chat.cancelRun}
+						disabled={chat.isLoading && !chat.canQueueMessage}
+						showCancel={chat.canCancelRun}
+						cancelLoading={chat.isCancelling}
+						cancelLabel={cancelLabel}
 						placeholder={placeholder}
 						allowAttachments={resolvedAllowAttachments}
 						accept={acceptFileTypes}

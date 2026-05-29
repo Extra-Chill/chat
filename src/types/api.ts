@@ -69,6 +69,8 @@ export interface SendResponse {
 	success: boolean;
 	data: {
 		session_id: string;
+		/** Opaque ID for the accepted chat run. */
+		run_id?: string;
 		response: string;
 		tool_calls: Array<{
 			tool_name: string;
@@ -95,6 +97,8 @@ export interface ContinueResponse {
 	success: boolean;
 	data: {
 		session_id: string;
+		/** Opaque ID for the active chat run. */
+		run_id?: string;
 		new_messages: RawMessage[];
 		final_content: string;
 		tool_calls: Array<{
