@@ -52,6 +52,8 @@ export interface ChatApiConfig {
 
 export interface SendResult {
 	sessionId: string;
+	/** Opaque ID for the accepted chat run, when supplied by the backend. */
+	runId: string | null;
 	messages: ChatMessage[];
 	metadata: Record<string, unknown>;
 	completed: boolean;
@@ -60,6 +62,8 @@ export interface SendResult {
 }
 
 export interface ContinueResult {
+	/** Opaque ID for the active chat run, when supplied by the backend. */
+	runId: string | null;
 	messages: ChatMessage[];
 	metadata: Record<string, unknown>;
 	completed: boolean;
@@ -140,6 +144,7 @@ export async function sendMessage(
 
 	return {
 		sessionId: raw.data.session_id,
+		runId: typeof raw.data.run_id === 'string' ? raw.data.run_id : null,
 		messages: normalizeConversation(raw.data.conversation),
 		metadata: raw.data.metadata ?? {},
 		completed: raw.data.completed,
@@ -166,6 +171,7 @@ export async function continueResponse(
 	}
 
 	return {
+		runId: typeof raw.data.run_id === 'string' ? raw.data.run_id : null,
 		messages: raw.data.new_messages.map(normalizeMessage),
 		metadata: raw.data.metadata ?? {},
 		completed: raw.data.completed,

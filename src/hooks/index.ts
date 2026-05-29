@@ -1,8 +1,11 @@
 export {
 	useChat,
+	type ChatRun,
 	type CancelRunInput,
 	type ChatRunCapabilities,
+	type ChatRunStatus,
 	type QueueMessageInput,
+	type QueueMessageResult,
 	type UseChatOptions,
 	type UseChatReturn,
 } from './useChat.ts';

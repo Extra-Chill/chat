@@ -101,8 +101,8 @@ Backends that support long-running chat turns can opt into stop and queue UI wit
   onCancelRun={async ({ runId, sessionId }) => {
     await cancelRun({ runId, sessionId });
   }}
-  onQueueMessage={async ({ sessionId, content, files }) => {
-    await queueMessage({ sessionId, content, files });
+  onQueueMessage={async ({ sessionId, runId, content, files }) => {
+    return queueMessage({ sessionId, runId, content, files });
   }}
 />
 ```
@@ -114,7 +114,7 @@ Capability behavior:
 - Queue support: input and message suggestions stay usable while loading and submitted messages render optimistically with a queued state.
 - Cancel + queue support: both controls are enabled together.
 
-If a backend returns run IDs in response metadata, adapters can expose them generically through `getRunId`:
+The public TypeScript API uses camelCase (`runId`, `queuedMessageId`) while adapters can map whatever wire format their backend uses. If a backend returns run IDs in response metadata, adapters can expose them generically through `getRunId`:
 
 ```tsx
 <Chat
@@ -125,6 +125,8 @@ If a backend returns run IDs in response metadata, adapters can expose them gene
   onCancelRun={cancelRun}
 />
 ```
+
+`onQueueMessage` may return `{ queuedMessageId, position, runId, sessionId, status }` when the adapter has an acknowledgement payload. The UI does not require those fields, but the types preserve them for adapters that want to coordinate follow-up polling or session refreshes.
 
 ## Consumers
 

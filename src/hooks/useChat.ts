@@ -20,6 +20,17 @@ export interface ChatRunCapabilities {
 	queue?: boolean;
 }
 
+export type ChatRunStatus = 'queued' | 'running' | 'cancelling' | 'cancelled' | 'completed' | 'failed';
+
+export interface ChatRun {
+	runId: string;
+	sessionId: string;
+	status?: ChatRunStatus;
+	startedAt?: string;
+	updatedAt?: string;
+	metadata?: Record<string, unknown>;
+}
+
 export interface CancelRunInput {
 	runId: string;
 	sessionId: string;
@@ -27,8 +38,17 @@ export interface CancelRunInput {
 
 export interface QueueMessageInput {
 	sessionId: string;
+	/** Active run this message should follow, when known. */
+	runId?: string;
 	content: string;
 	files?: File[];
+}
+
+export interface QueueMessageResult extends Partial<ChatRun> {
+	/** Opaque ID assigned to the queued user message. */
+	queuedMessageId?: string;
+	/** Zero-based or one-based queue position, as reported by the adapter. */
+	position?: number;
 }
 
 /**
@@ -103,7 +123,7 @@ export interface UseChatOptions {
 	/** Cancel the active backend run. Called only when `runCapabilities.cancel` is enabled. */
 	onCancelRun?: (input: CancelRunInput) => Promise<void> | void;
 	/** Queue a follow-up message. Called only when `runCapabilities.queue` is enabled. */
-	onQueueMessage?: (input: QueueMessageInput) => Promise<void> | void;
+	onQueueMessage?: (input: QueueMessageInput) => Promise<QueueMessageResult | void> | QueueMessageResult | void;
 	/**
 	 * Optional context filter for session listing.
 	 * Only sessions created in the matching context are shown.
@@ -189,6 +209,11 @@ function toError(err: unknown): Error {
 		try { return new Error(JSON.stringify(err)); } catch { /* fall through */ }
 	}
 	return new Error('An unknown error occurred');
+}
+
+function extractRunId(metadata: Record<string, unknown>): string | null {
+	const runId = metadata.runId ?? metadata.run_id;
+	return typeof runId === 'string' && runId.trim() ? runId : null;
 }
 
 /**
@@ -303,8 +328,14 @@ export function useChat({
 
 	const applyResponseMetadata = useCallback((responseMetadata: Record<string, unknown>) => {
 		onResponseMetadataRef.current?.(responseMetadata);
-		const runId = getRunIdRef.current?.(responseMetadata);
-		if (runId !== undefined) {
+		const mappedRunId = getRunIdRef.current?.(responseMetadata);
+		if (mappedRunId !== undefined) {
+			setMetadataRunId(mappedRunId);
+			return;
+		}
+
+		const runId = extractRunId(responseMetadata);
+		if (runId) {
 			setMetadataRunId(runId);
 		}
 	}, []);
@@ -365,6 +396,7 @@ export function useChat({
 			const queueMessage = onQueueMessageRef.current;
 			if (!runCapabilitiesRef.current.queue || !queueMessage || !currentSessionId) return;
 
+			const activeRunId = activeRunIdRef.current ?? undefined;
 			const queuedMessage: ChatMessage = {
 				id: generateMessageId(),
 				role: 'user',
@@ -377,11 +409,15 @@ export function useChat({
 			onMessage?.(queuedMessage);
 
 			try {
-				await queueMessage({
+				const queued = await queueMessage({
 					sessionId: currentSessionId,
+					runId: activeRunId,
 					content,
 					files,
 				});
+				if (queued?.runId) {
+					setMetadataRunId(queued.runId);
+				}
 			} catch (err) {
 				const error = toError(err);
 				onError?.(error);
@@ -486,6 +522,7 @@ export function useChat({
 
 			// Replace all messages with the full normalized conversation
 			setMessages(result.messages);
+			setMetadataRunId(result.runId);
 			applyResponseMetadata(result.metadata);
 
 			// Fire tool call callback for the initial response.
@@ -509,6 +546,9 @@ export function useChat({
 					if (cancelledRequestIdRef.current === requestId || activeRequestIdRef.current !== requestId) break;
 
 					setMessages((prev) => [...prev, ...continuation.messages]);
+					if (continuation.runId) {
+						setMetadataRunId(continuation.runId);
+					}
 					applyResponseMetadata(continuation.metadata);
 					for (const msg of continuation.messages) {
 						onMessage?.(msg);
