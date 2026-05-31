@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.13.0] - 2026-05-31
+
+### Added
+- add long-running chat run controls
+- add question tool card
+- add chat message suggestions
+- expose chat response metadata
+
+### Changed
+- explicit React 19 support
+
+### Fixed
+- collapse answered question choices
+- keep loading messages during tool turns
+- align run control adapter types
+- pair tool results by call id
+- hide question cards after answer
+- render tool cards after assistant replies
+- remove redundant typing padding
+
 ## [0.12.4] - 2026-05-19
 
 ### Fixed
