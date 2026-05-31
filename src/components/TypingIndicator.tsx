@@ -28,7 +28,7 @@ export function TypingIndicator({
 	// Track displayed label separately so we can fade out/in on change.
 	const [displayLabel, setDisplayLabel] = useState(label);
 	const [fading, setFading] = useState(false);
-	const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+	const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
 	useEffect(() => {
 		if (label === displayLabel) return;
