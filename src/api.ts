@@ -5,7 +5,7 @@
  * implements the same endpoint shapes works out of the box.
  *
  * The `fetchFn` parameter allows consumers to plug in their own
- * fetch implementation (e.g. @wordpress/api-fetch for cookie auth).
+ * fetch implementation.
  */
 
 import type { ChatMessage } from './types/message.ts';
@@ -23,10 +23,7 @@ import { normalizeConversation, normalizeMessage, normalizeSession } from './nor
 /**
  * A fetch-like function. Accepts path + options, returns parsed JSON.
  *
- * This matches @wordpress/api-fetch signature:
- *   apiFetch({ path: '/datamachine/v1/chat', method: 'POST', data: {...} })
- *
- * For non-WordPress contexts, consumers wrap native fetch:
+ * Consumers can wrap native fetch:
  *   (opts) => fetch(baseUrl + opts.path, { method: opts.method, body: JSON.stringify(opts.data) }).then(r => r.json())
  */
 export interface FetchOptions {
@@ -141,17 +138,14 @@ export interface SendAttachment {
  * Upload function provided by the consumer to handle file uploads.
  *
  * Called for each file the user attaches before the chat message is sent.
- * Must upload the file to the consumer's storage (e.g. WordPress Media Library,
- * S3, etc.) and return a URL and/or media ID that the backend can resolve.
+ * Must upload the file to the consumer's storage and return a URL and/or media ID
+ * that the backend can resolve.
  *
  * @example
  * ```tsx
- * // WordPress consumer:
  * const mediaUploadFn: MediaUploadFn = async (file) => {
- *   const formData = new FormData();
- *   formData.append('file', file);
- *   const media = await apiFetch({ path: '/wp/v2/media', method: 'POST', body: formData });
- *   return { url: media.source_url, media_id: media.id };
+ *   const media = await uploadMedia(file);
+ *   return { url: media.url, media_id: media.id };
  * };
  * ```
  */
@@ -193,7 +187,7 @@ export function createRestChatAdapter(config: ChatApiConfig): ChatAdapter {
  *
  * When attachments are provided, they are included in the JSON body
  * as structured metadata (not as file uploads — files should already
- * be in the WordPress media library or accessible by URL).
+ * be accessible by URL).
  *
  * @param metadata - Arbitrary key-value pairs forwarded to the backend
  *   alongside the message (e.g. `{ selected_pipeline_id: 42 }` or

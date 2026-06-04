@@ -13,14 +13,12 @@ npm install @extrachill/chat
 ```tsx
 import { Chat } from '@extrachill/chat';
 import '@extrachill/chat/css';
-import apiFetch from '@wordpress/api-fetch';
 
-function StudioChat() {
+function ChatSurface() {
   return (
     <Chat
-      basePath="/datamachine/v1/chat"
-      fetchFn={apiFetch}
-      agentId={5}
+      basePath="/chat"
+      fetchFn={fetchChatJson}
     />
   );
 }
@@ -28,7 +26,7 @@ function StudioChat() {
 
 ## What's Included
 
-**Components** — `Chat`, `ChatMessages`, `ChatMessage`, `ChatInput`, `TypingIndicator`, `ToolMessage`, `SessionSwitcher`, `ErrorBoundary`, `AvailabilityGate`
+**Components** — `Chat`, `FloatingChatShell`, `ChatMessages`, `ChatMessage`, `ChatInput`, `TypingIndicator`, `ToolMessage`, `SessionSwitcher`, `ErrorBoundary`, `AvailabilityGate`
 
 **Hook** — `useChat` manages messages, sessions, multi-turn continuation loops, and availability state
 
@@ -50,7 +48,7 @@ The package expects these endpoints at `basePath`:
 | `GET` | `/{session_id}` | Load a single session's conversation |
 | `DELETE` | `/{session_id}` | Delete a session |
 
-Any backend implementing this contract works. The `fetchFn` prop accepts any function matching `(options: { path, method?, data? }) => Promise<json>` — `@wordpress/api-fetch` works directly.
+Any backend implementing this contract works. The `fetchFn` prop accepts any function matching `(options: { path, method?, data? }) => Promise<json>`.
 
 ## Theming
 
@@ -71,9 +69,9 @@ Pass `messageSuggestions` to offer optional prompt starters on fresh conversatio
 
 ```tsx
 <Chat
-  basePath="/datamachine/v1/chat"
-  fetchFn={apiFetch}
-  messageSuggestions={[
+	basePath="/chat"
+	fetchFn={fetchChatJson}
+	messageSuggestions={[
     {
       label: 'Plan my homepage',
       message: 'Help me plan the homepage for my site.',
@@ -86,6 +84,56 @@ Pass `messageSuggestions` to offer optional prompt starters on fresh conversatio
   ]}
 />
 ```
+
+## Floating Shell
+
+Use `FloatingChatShell` when you want a launcher and floating drawer around the same backend-agnostic `Chat` component. The shell owns only visibility, expanded mode, unread badge state, and generic slots; product-specific UI should be supplied by the consumer.
+
+```tsx
+import { FloatingChatShell } from '@extrachill/chat';
+
+<FloatingChatShell
+  basePath="/chat"
+  fetchFn={fetchChatJson}
+  title="Assistant"
+  header={({ close }) => (
+    <div className="my-chat-header">
+      <strong>Assistant</strong>
+      <button type="button" onClick={close}>Close</button>
+    </div>
+  )}
+  launcher={({ toggleOpen, unreadCount }) => (
+    <button type="button" onClick={toggleOpen}>
+      Chat{unreadCount > 0 ? ` (${unreadCount})` : ''}
+    </button>
+  )}
+/>
+```
+
+You can also control the shell externally with `open`, `onOpenChange`, `expanded`, and `onExpandedChange`.
+
+## Client Context
+
+Register client-context providers when a surface has extra local state the backend may need. `Chat` includes that metadata only when `clientContext` is enabled, so existing inline usage is unchanged by default.
+
+```tsx
+import { Chat, registerClientContextProvider } from '@extrachill/chat';
+
+registerClientContextProvider({
+  id: 'current-document',
+  priority: 10,
+  getContext: () => ({ documentId: getCurrentDocumentId() }),
+});
+
+<Chat
+  basePath="/chat"
+  fetchFn={fetchChatJson}
+  clientContext
+  clientContextOptions={{ metadataKey: 'client_context' }}
+/>
+```
+
+Manual consumers can keep using `useClientContextMetadata()` and pass the result through `metadata` themselves.
 
 ## Long-Running Turns
 
@@ -127,12 +175,6 @@ The public TypeScript API uses camelCase (`runId`, `queuedMessageId`) while adap
 ```
 
 `onQueueMessage` may return `{ queuedMessageId, position, runId, sessionId, status }` when the adapter has an acknowledgement payload. The UI does not require those fields, but the types preserve them for adapters that want to coordinate follow-up polling or session refreshes.
-
-## Consumers
-
-- **extrachill-studio** — Studio Chat tab (agent_id=5)
-- **extrachill-roadie** — Portable floating agent chat
-- **data-machine** — Admin chat sidebar
 
 ## License
 

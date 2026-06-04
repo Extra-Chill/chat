@@ -79,6 +79,19 @@
 	--ec-chat-availability-bg: #f9fafb;
 	--ec-chat-availability-text: #374151;
 
+	/* Floating shell */
+	--ec-chat-shell-z-index: 9999;
+	--ec-chat-shell-offset: 24px;
+	--ec-chat-shell-width: 420px;
+	--ec-chat-shell-height: 640px;
+	--ec-chat-shell-expanded-width: min(960px, calc(100vw - 48px));
+	--ec-chat-shell-expanded-height: min(760px, calc(100vh - 48px));
+	--ec-chat-shell-shadow: 0 24px 80px rgba(15, 23, 42, 0.24);
+	--ec-chat-shell-launcher-bg: var(--ec-chat-send-bg);
+	--ec-chat-shell-launcher-text: var(--ec-chat-send-text);
+	--ec-chat-shell-badge-bg: #ef4444;
+	--ec-chat-shell-badge-text: #ffffff;
+
 	font-family: var(--ec-chat-font-family);
 	font-size: var(--ec-chat-font-size);
 	line-height: var(--ec-chat-line-height);
@@ -132,6 +145,7 @@
 
 		--ec-chat-availability-bg: #1e293b;
 		--ec-chat-availability-text: #cbd5e1;
+		--ec-chat-shell-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
 	}
 
 	.ec-chat-diff {
@@ -187,6 +201,190 @@
 	clip: rect(0, 0, 0, 0);
 	white-space: nowrap;
 	border: 0;
+}
+
+/* ============================================
+   Floating Shell
+   ============================================ */
+
+.ec-chat-shell {
+	--ec-chat-font-family: inherit;
+	--ec-chat-text: #1a1a1a;
+	--ec-chat-bg: #ffffff;
+	--ec-chat-border: #e5e7eb;
+	--ec-chat-input-bg: #ffffff;
+	--ec-chat-input-focus-border: #2563eb;
+	--ec-chat-session-hover-bg: #f9fafb;
+	--ec-chat-send-bg: #2563eb;
+	--ec-chat-send-text: #ffffff;
+	--ec-chat-border-radius: 12px;
+	--ec-chat-shell-z-index: 9999;
+	--ec-chat-shell-offset: 24px;
+	--ec-chat-shell-width: 420px;
+	--ec-chat-shell-height: 640px;
+	--ec-chat-shell-expanded-width: min(960px, calc(100vw - 48px));
+	--ec-chat-shell-expanded-height: min(760px, calc(100vh - 48px));
+	--ec-chat-shell-shadow: 0 24px 80px rgba(15, 23, 42, 0.24);
+	--ec-chat-shell-launcher-bg: var(--ec-chat-send-bg);
+	--ec-chat-shell-launcher-text: var(--ec-chat-send-text);
+	--ec-chat-shell-badge-bg: #ef4444;
+	--ec-chat-shell-badge-text: #ffffff;
+
+	position: fixed;
+	right: var(--ec-chat-shell-offset);
+	bottom: var(--ec-chat-shell-offset);
+	z-index: var(--ec-chat-shell-z-index);
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 12px;
+	font-family: var(--ec-chat-font-family);
+	color: var(--ec-chat-text);
+}
+
+@media (prefers-color-scheme: dark) {
+	.ec-chat-shell {
+		--ec-chat-text: #e2e8f0;
+		--ec-chat-bg: #1a1a2e;
+		--ec-chat-border: #334155;
+		--ec-chat-input-bg: #1e293b;
+		--ec-chat-input-focus-border: #3b82f6;
+		--ec-chat-session-hover-bg: #1e293b;
+		--ec-chat-send-bg: #3b82f6;
+		--ec-chat-send-text: #ffffff;
+		--ec-chat-shell-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+	}
+}
+
+.ec-chat-shell__launcher {
+	order: 2;
+}
+
+.ec-chat-shell__launcher-button {
+	appearance: none;
+	border: 0;
+	border-radius: 999px;
+	background: var(--ec-chat-shell-launcher-bg);
+	color: var(--ec-chat-shell-launcher-text);
+	box-shadow: var(--ec-chat-shell-shadow);
+	cursor: pointer;
+	font: inherit;
+	font-weight: 600;
+	min-height: 48px;
+	padding: 12px 18px;
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.ec-chat-shell__launcher-button:hover {
+	transform: translateY(-1px);
+}
+
+.ec-chat-shell__launcher-button:active {
+	transform: translateY(0);
+}
+
+.ec-chat-shell__badge {
+	background: var(--ec-chat-shell-badge-bg);
+	color: var(--ec-chat-shell-badge-text);
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1;
+	min-width: 20px;
+	padding: 4px 6px;
+	text-align: center;
+}
+
+.ec-chat-shell__panel {
+	order: 1;
+	width: min(var(--ec-chat-shell-width), calc(100vw - 32px));
+	height: min(var(--ec-chat-shell-height), calc(100vh - 96px));
+	background: var(--ec-chat-bg);
+	border: 1px solid var(--ec-chat-border);
+	border-radius: var(--ec-chat-border-radius);
+	box-shadow: var(--ec-chat-shell-shadow);
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+}
+
+.ec-chat-shell--expanded .ec-chat-shell__panel {
+	width: var(--ec-chat-shell-expanded-width);
+	height: var(--ec-chat-shell-expanded-height);
+}
+
+.ec-chat-shell__header {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 12px 14px;
+	border-bottom: 1px solid var(--ec-chat-border);
+	background: var(--ec-chat-bg);
+}
+
+.ec-chat-shell__title {
+	font-weight: 600;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ec-chat-shell__actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	min-width: 0;
+}
+
+.ec-chat-shell__control {
+	appearance: none;
+	border: 1px solid var(--ec-chat-border);
+	border-radius: 999px;
+	background: var(--ec-chat-input-bg);
+	color: var(--ec-chat-text);
+	cursor: pointer;
+	font: inherit;
+	font-size: 12px;
+	padding: 6px 10px;
+	transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.ec-chat-shell__control:hover:not(:disabled) {
+	background: var(--ec-chat-session-hover-bg);
+	border-color: var(--ec-chat-input-focus-border);
+}
+
+.ec-chat-shell__chat {
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+@media (max-width: 640px) {
+	.ec-chat-shell {
+		right: 12px;
+		bottom: 12px;
+		left: 12px;
+		align-items: stretch;
+	}
+
+	.ec-chat-shell__launcher {
+		align-self: flex-end;
+	}
+
+	.ec-chat-shell__panel,
+	.ec-chat-shell--expanded .ec-chat-shell__panel {
+		width: 100%;
+		height: min(680px, calc(100vh - 88px));
+	}
 }
 
 /* ============================================

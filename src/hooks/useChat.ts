@@ -183,7 +183,7 @@ function generateMessageId(): string {
 /**
  * Extract a readable error message from any error shape.
  *
- * Handles Error instances, @wordpress/api-fetch error objects
+ * Handles Error instances, structured fetch error objects
  * ({ code, message, data }), and plain strings.
  */
 function toError(err: unknown): Error {
@@ -211,12 +211,9 @@ function extractRunId(metadata: Record<string, unknown>): string | null {
  *
  * @example
  * ```tsx
- * import apiFetch from '@wordpress/api-fetch';
- *
  * const chat = useChat({
- *   basePath: '/datamachine/v1/chat',
- *   fetchFn: apiFetch,
- *   agentId: 5,
+ *   basePath: '/chat',
+ *   fetchFn: fetchChatJson,
  * });
  *
  * return (
