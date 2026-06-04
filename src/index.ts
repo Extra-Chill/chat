@@ -55,6 +55,15 @@ export { markdownToHtml } from './markdown.ts';
 // Transcript
 export { formatChatAsMarkdown, copyChatAsMarkdown } from './transcript.ts';
 
+// Tool timeline primitives
+export {
+	buildMessageTimeline,
+	buildToolGroups,
+	type MessageTimelineItem,
+	type MessageTimelineOptions,
+	type ToolGroup,
+} from './tool-timeline.ts';
+
 // Diff helpers
 export {
 	parseCanonicalDiff,
@@ -122,7 +131,6 @@ export {
 export {
 	ToolMessage,
 	type ToolMessageProps,
-	type ToolGroup,
 	type ToolRenderer,
 	type ToolRendererContext,
 } from './components/ToolMessage.tsx';
