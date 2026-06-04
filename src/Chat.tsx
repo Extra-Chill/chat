@@ -12,18 +12,50 @@ import { TypingIndicator } from './components/TypingIndicator.tsx';
 import { SessionSwitcher } from './components/SessionSwitcher.tsx';
 import { MessageSuggestions, type ChatMessageSuggestion } from './components/MessageSuggestions.tsx';
 import type { UseChatReturn } from './hooks/useChat.ts';
+import { useClientContextMetadata, type ClientContextMetadataOptions } from './client-context.ts';
 
 export type ChatSessionUi = 'list' | 'none';
+
+function mergeMetadata(
+	metadata: Record<string, unknown> | undefined,
+	additionalMetadata: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+	const additionalKeys = Object.keys(additionalMetadata);
+	if (additionalKeys.length === 0) return metadata;
+	if (!metadata) return additionalMetadata;
+
+	const merged = { ...additionalMetadata, ...metadata };
+
+	for (const key of additionalKeys) {
+		const baseValue = additionalMetadata[key];
+		const overrideValue = metadata[key];
+		if (
+			baseValue &&
+			overrideValue &&
+			typeof baseValue === 'object' &&
+			typeof overrideValue === 'object' &&
+			!Array.isArray(baseValue) &&
+			!Array.isArray(overrideValue)
+		) {
+			merged[key] = {
+				...(baseValue as Record<string, unknown>),
+				...(overrideValue as Record<string, unknown>),
+			};
+		}
+	}
+
+	return merged;
+}
 
 export interface ChatProps {
 	/**
 	 * Base path for the chat REST endpoints.
-	 * e.g. '/datamachine/v1/chat'
+	 * e.g. '/chat'
 	 */
 	basePath: string;
 	/**
 	 * Fetch function for API calls. Must accept { path, method?, data? }
-	 * and return parsed JSON. @wordpress/api-fetch works directly.
+	 * and return parsed JSON.
 	 */
 	fetchFn: FetchFn;
 	/**
@@ -130,10 +162,8 @@ export interface ChatProps {
 	 * ```tsx
 	 * <Chat
 	 *   mediaUploadFn={async (file) => {
-	 *     const formData = new FormData();
-	 *     formData.append('file', file);
-	 *     const media = await apiFetch({ path: '/wp/v2/media', method: 'POST', body: formData });
-	 *     return { url: media.source_url, media_id: media.id };
+	 *     const media = await uploadMedia(file);
+	 *     return { url: media.url, media_id: media.id };
 	 *   }}
 	 * />
 	 * ```
@@ -156,6 +186,10 @@ export interface ChatProps {
 	 * Use for client-side context injection (e.g. `{ client_context: { tab: 'compose', postId: 123 } }`).
 	 */
 	metadata?: Record<string, unknown>;
+	/** Include registered client-context metadata with each sent message. Defaults to false. */
+	clientContext?: boolean;
+	/** Configure the automatically collected client-context metadata payload. */
+	clientContextOptions?: ClientContextMetadataOptions;
 	/** Deprecated: built-in copy transcript button UI is no longer rendered. */
 	showCopyTranscript?: boolean;
 	/** Deprecated legacy prop retained for compatibility. */
@@ -188,14 +222,12 @@ export interface ChatProps {
  * @example
  * ```tsx
  * import { Chat } from '@extrachill/chat';
- * import apiFetch from '@wordpress/api-fetch';
  *
- * function StudioChat() {
+ * function ChatSurface() {
  *   return (
  *     <Chat
- *       basePath="/datamachine/v1/chat"
- *       fetchFn={apiFetch}
- *       agentId={5}
+ *       basePath="/chat"
+ *       fetchFn={fetchChatJson}
  *     />
  *   );
  * }
@@ -239,6 +271,8 @@ export function Chat({
 	onQueueMessage,
 	cancelLabel,
 	metadata,
+	clientContext = false,
+	clientContextOptions,
 	showCopyTranscript = false,
 	copyTranscriptLabel,
 	copyTranscriptCopiedLabel,
@@ -248,6 +282,13 @@ export function Chat({
 }: ChatProps) {
 	// Attachments are only functional when a mediaUploadFn is provided.
 	const resolvedAllowAttachments = allowAttachments ?? !!mediaUploadFn;
+	const clientContextMetadata = useClientContextMetadata(clientContextOptions);
+	const resolvedMetadata = useMemo(
+		() => clientContext
+			? mergeMetadata(metadata, clientContextMetadata)
+			: metadata,
+		[clientContext, metadata, clientContextMetadata],
+	);
 
 	const chat = useChat({
 		basePath,
@@ -261,7 +302,7 @@ export function Chat({
 		onToolCalls,
 		onResponseMetadata,
 		sessionContext,
-		metadata,
+		metadata: resolvedMetadata,
 		mediaUploadFn,
 		runCapabilities,
 		activeRunId,

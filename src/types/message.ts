@@ -56,7 +56,7 @@ export interface MediaAttachment {
 	mimeType?: string;
 	/** File size in bytes. */
 	size?: number;
-	/** WordPress media library attachment ID. */
+	/** Consumer media library attachment ID. */
 	mediaId?: number;
 	/** Thumbnail URL for previews. */
 	thumbnailUrl?: string;

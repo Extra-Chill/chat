@@ -17,6 +17,17 @@ export interface ClientContextSnapshot {
 	providers: ClientContextProviderSnapshot[];
 }
 
+export interface ClientContextMetadataOptions {
+	/** Metadata key used for the client context payload. Defaults to `client_context`. */
+	metadataKey?: string;
+	/** Include browser location and document title. Defaults to true. */
+	includePage?: boolean;
+	/** Include the highest-priority provider context. Defaults to true. */
+	includeActiveContext?: boolean;
+	/** Include every registered provider context. Defaults to true. */
+	includeAvailableContexts?: boolean;
+}
+
 export interface ClientContextRegistry {
 	registerProvider: ( provider: ClientContextProvider ) => () => void;
 	unregisterProvider: ( id: string ) => void;
@@ -117,44 +128,72 @@ export function registerClientContextProvider( provider: ClientContextProvider )
 	return getOrCreateClientContextRegistry().registerProvider( provider );
 }
 
-export function getClientContextMetadata(): Record< string, unknown > {
+
+export function getClientContextMetadata( options: ClientContextMetadataOptions = {} ): Record< string, unknown > {
 	if ( typeof window === 'undefined' ) {
 		return {};
 	}
 
+	const {
+		metadataKey = 'client_context',
+		includePage = true,
+		includeActiveContext = true,
+		includeAvailableContexts = true,
+	} = options;
 	const snapshot = getOrCreateClientContextRegistry().getSnapshot();
+	const context: Record< string, unknown > = {};
 
-	return {
-		client_context: {
+	if ( includePage ) {
+		Object.assign( context, {
 			site: window.location.hostname,
 			url: window.location.href,
 			path: window.location.pathname,
 			page_title: document.title,
-			active_context: snapshot.activeContext,
-			available_contexts: snapshot.providers.map( ( provider ) => ( {
-				id: provider.id,
-				priority: provider.priority,
-				context: provider.context,
-			} ) ),
-		},
+		} );
+	}
+
+	if ( includeActiveContext ) {
+		context.active_context = snapshot.activeContext;
+	}
+
+	if ( includeAvailableContexts ) {
+		context.available_contexts = snapshot.providers.map( ( provider ) => ( {
+			id: provider.id,
+			priority: provider.priority,
+			context: provider.context,
+		} ) );
+	}
+
+	return {
+		[ metadataKey ]: context,
 	};
 }
 
-export function useClientContextMetadata(): Record< string, unknown > {
+export function useClientContextMetadata( options: ClientContextMetadataOptions = {} ): Record< string, unknown > {
 	const registry = useMemo( () => getOrCreateClientContextRegistry(), [] );
+	const metadataKey = options.metadataKey ?? 'client_context';
+	const includePage = options.includePage ?? true;
+	const includeActiveContext = options.includeActiveContext ?? true;
+	const includeAvailableContexts = options.includeAvailableContexts ?? true;
+	const resolvedOptions = useMemo( () => ( {
+		metadataKey,
+		includePage,
+		includeActiveContext,
+		includeAvailableContexts,
+	} ), [ metadataKey, includePage, includeActiveContext, includeAvailableContexts ] );
 	const [ metadata, setMetadata ] = useState< Record< string, unknown > >( () =>
-		getClientContextMetadata()
+		getClientContextMetadata( resolvedOptions )
 	);
 
 	useEffect( () => {
 		const sync = (): void => {
-			setMetadata( getClientContextMetadata() );
+			setMetadata( getClientContextMetadata( resolvedOptions ) );
 		};
 
 		sync();
 
 		return registry.subscribe( sync );
-	}, [ registry ] );
+	}, [ registry, resolvedOptions ] );
 
 	return metadata;
 }
