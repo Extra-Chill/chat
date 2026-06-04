@@ -11,6 +11,7 @@
 import type { ChatMessage } from './types/message.ts';
 import type { ChatSession } from './types/session.ts';
 import type {
+	SendRequest,
 	SendResponse,
 	ContinueResponse,
 	ListSessionsResponse,
@@ -29,7 +30,7 @@ export interface FetchOptions {
 	path: string;
 	method?: string;
 	/** JSON body (mutually exclusive with formData). */
-	data?: Record<string, unknown>;
+	data?: unknown;
 	/** FormData body for file uploads (mutually exclusive with data). */
 	formData?: FormData;
 	/** Additional HTTP headers. */
@@ -39,11 +40,11 @@ export interface FetchOptions {
 export type FetchFn = (options: FetchOptions) => Promise<unknown>;
 
 export interface ChatApiConfig {
-	/** Base path for the chat endpoints (e.g. '/chat'). */
+	/** Base path for the chat endpoints. */
 	basePath: string;
 	/** The fetch function to use for requests. */
 	fetchFn: FetchFn;
-	/** Agent ID to scope sessions to. */
+	/** Optional adapter-level assistant identifier to scope sessions to. */
 	agentId?: number;
 }
 
@@ -66,6 +67,61 @@ export interface ContinueResult {
 	completed: boolean;
 	turnNumber: number;
 	maxTurnsReached: boolean;
+}
+
+export interface SendMessageInput {
+	content: string;
+	sessionId?: string;
+	attachments?: SendAttachment[];
+	metadata?: Record<string, unknown>;
+	clientContext?: Record<string, unknown>;
+}
+
+export interface ListSessionsInput {
+	limit?: number;
+	context?: string;
+}
+
+export interface CancelRunInput {
+	runId: string;
+	sessionId: string;
+}
+
+export interface QueueMessageInput extends SendMessageInput {
+	sessionId: string;
+	/** Active run this message should follow, when known. */
+	runId?: string;
+	files?: File[];
+}
+
+export interface QueueMessageResult {
+	/** Opaque ID assigned to the queued user message. */
+	queuedMessageId?: string;
+	/** Opaque ID for the queued or active run, when supplied by the adapter. */
+	runId?: string;
+	/** Zero-based or one-based queue position, as reported by the adapter. */
+	position?: number;
+	metadata?: Record<string, unknown>;
+}
+
+export interface ChatRunCapabilities {
+	/** Whether the current backend adapter can cancel an active run. */
+	cancel?: boolean;
+	/** Whether the current backend adapter can queue follow-up messages. */
+	queue?: boolean;
+}
+
+export interface ChatAdapter {
+	runCapabilities?: ChatRunCapabilities;
+	sendMessage(input: SendMessageInput): Promise<SendResult>;
+	continueResponse(sessionId: string): Promise<ContinueResult>;
+	listSessions(input?: ListSessionsInput): Promise<ChatSession[]>;
+	loadSession(sessionId: string): Promise<ChatMessage[]>;
+	deleteSession(sessionId: string): Promise<void>;
+	markSessionRead?(sessionId: string): Promise<void>;
+	uploadFile?(file: File): Promise<{ url: string; media_id?: number }>;
+	cancelRun?(input: CancelRunInput): Promise<void> | void;
+	queueMessage?(input: QueueMessageInput): Promise<QueueMessageResult | void> | QueueMessageResult | void;
 }
 
 /**
@@ -95,6 +151,37 @@ export interface SendAttachment {
  */
 export type MediaUploadFn = (file: File) => Promise<{ url: string; media_id?: number }>;
 
+export function createSendMessageRequest(
+	config: ChatApiConfig,
+	input: SendMessageInput,
+): SendRequest {
+	const body: SendRequest = { message: input.content };
+	if (input.sessionId) body.session_id = input.sessionId;
+	if (config.agentId) body.agent_id = config.agentId;
+	if (input.attachments?.length) body.attachments = input.attachments;
+	if (input.metadata) body.metadata = input.metadata;
+	if (input.clientContext) body.clientContext = input.clientContext;
+	return body;
+}
+
+export function createRestChatAdapter(config: ChatApiConfig): ChatAdapter {
+	return {
+		sendMessage: (input) => sendMessage(
+			config,
+			input.content,
+			input.sessionId,
+			input.attachments,
+			input.metadata,
+			input.clientContext,
+		),
+		continueResponse: (sessionId) => continueResponse(config, sessionId),
+		listSessions: (input) => listSessions(config, input?.limit, input?.context),
+		loadSession: (sessionId) => loadSession(config, sessionId),
+		deleteSession: (sessionId) => deleteSession(config, sessionId),
+		markSessionRead: (sessionId) => markSessionRead(config, sessionId),
+	};
+}
+
 /**
  * Send a user message (create or continue a session).
  *
@@ -113,12 +200,15 @@ export async function sendMessage(
 	sessionId?: string,
 	attachments?: SendAttachment[],
 	metadata?: Record<string, unknown>,
+	clientContext?: Record<string, unknown>,
 ): Promise<SendResult> {
-	const body: Record<string, unknown> = { message: content };
-	if (sessionId) body.session_id = sessionId;
-	if (config.agentId) body.agent_id = config.agentId;
-	if (attachments?.length) body.attachments = attachments;
-	if (metadata) Object.assign(body, metadata);
+	const body = createSendMessageRequest(config, {
+		content,
+		sessionId,
+		attachments,
+		metadata,
+		clientContext,
+	});
 
 	// Generate a unique request ID for idempotent request handling.
 	const requestId = typeof crypto !== 'undefined' && crypto.randomUUID

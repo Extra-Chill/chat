@@ -16,48 +16,34 @@ import { useClientContextMetadata, type ClientContextMetadataOptions } from './c
 
 export type ChatSessionUi = 'list' | 'none';
 
-function mergeMetadata(
-	metadata: Record<string, unknown> | undefined,
-	additionalMetadata: Record<string, unknown>,
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function getClientContextPayload(
+	metadata: Record<string, unknown>,
+	options: ClientContextMetadataOptions | undefined,
 ): Record<string, unknown> | undefined {
-	const additionalKeys = Object.keys(additionalMetadata);
-	if (additionalKeys.length === 0) return metadata;
-	if (!metadata) return additionalMetadata;
-
-	const merged = { ...additionalMetadata, ...metadata };
-
-	for (const key of additionalKeys) {
-		const baseValue = additionalMetadata[key];
-		const overrideValue = metadata[key];
-		if (
-			baseValue &&
-			overrideValue &&
-			typeof baseValue === 'object' &&
-			typeof overrideValue === 'object' &&
-			!Array.isArray(baseValue) &&
-			!Array.isArray(overrideValue)
-		) {
-			merged[key] = {
-				...(baseValue as Record<string, unknown>),
-				...(overrideValue as Record<string, unknown>),
-			};
-		}
+	const metadataKey = options?.metadataKey ?? 'client_context';
+	const payload = metadata[metadataKey];
+	if (isRecord(payload)) {
+		return payload;
 	}
 
-	return merged;
+	return Object.keys(metadata).length > 0 ? metadata : undefined;
 }
 
 export interface ChatProps {
+	/** Adapter that owns chat transport and backend-specific behavior. */
+	adapter?: UseChatOptions['adapter'];
 	/**
-	 * Base path for the chat REST endpoints.
-	 * e.g. '/chat'
+	 * Base path for the default REST adapter. Required when `adapter` is not provided.
 	 */
-	basePath: string;
+	basePath?: string;
 	/**
-	 * Fetch function for API calls. Must accept { path, method?, data? }
-	 * and return parsed JSON.
+	 * Fetch function for the default REST adapter. Required when `adapter` is not provided.
 	 */
-	fetchFn: FetchFn;
+	fetchFn?: FetchFn;
 	/**
 	 * Agent ID to scope the chat to.
 	 */
@@ -234,6 +220,7 @@ export interface ChatProps {
  * ```
  */
 export function Chat({
+	adapter,
 	basePath,
 	fetchFn,
 	agentId,
@@ -283,14 +270,15 @@ export function Chat({
 	// Attachments are only functional when a mediaUploadFn is provided.
 	const resolvedAllowAttachments = allowAttachments ?? !!mediaUploadFn;
 	const clientContextMetadata = useClientContextMetadata(clientContextOptions);
-	const resolvedMetadata = useMemo(
+	const resolvedClientContext = useMemo(
 		() => clientContext
-			? mergeMetadata(metadata, clientContextMetadata)
-			: metadata,
-		[clientContext, metadata, clientContextMetadata],
+			? getClientContextPayload(clientContextMetadata, clientContextOptions)
+			: undefined,
+		[clientContext, clientContextMetadata, clientContextOptions],
 	);
 
 	const chat = useChat({
+		adapter,
 		basePath,
 		fetchFn,
 		agentId,
@@ -302,7 +290,8 @@ export function Chat({
 		onToolCalls,
 		onResponseMetadata,
 		sessionContext,
-		metadata: resolvedMetadata,
+		metadata,
+		clientContext: resolvedClientContext,
 		mediaUploadFn,
 		runCapabilities,
 		activeRunId,

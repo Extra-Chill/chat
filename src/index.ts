@@ -4,20 +4,37 @@ export type {
 	ToolCall,
 	ToolResultMeta,
 	MediaAttachment,
+	ChatCitation,
+	ChatSource,
 	ChatMessage,
 	ContentFormat,
 	ChatSession,
 	ChatAvailability,
 	ChatInitialState,
 	RawAttachment,
+	RawCitation,
 	RawMessage,
+	RawSource,
 	RawSession,
 	SessionMetadata,
 } from './types/index.ts';
 
 // API
-export type { FetchFn, FetchOptions, ChatApiConfig, SendResult, ContinueResult, SendAttachment, MediaUploadFn } from './api.ts';
+export type {
+	FetchFn,
+	FetchOptions,
+	ChatApiConfig,
+	ChatAdapter,
+	SendMessageInput,
+	ListSessionsInput,
+	SendResult,
+	ContinueResult,
+	SendAttachment,
+	MediaUploadFn,
+} from './api.ts';
 export {
+	createRestChatAdapter,
+	createSendMessageRequest,
 	sendMessage,
 	continueResponse,
 	listSessions,
@@ -29,11 +46,23 @@ export {
 // Normalizer
 export { normalizeMessage, normalizeConversation, normalizeSession } from './normalizer.ts';
 
+// Citations
+export { getMessageCitations, useMessageCitations } from './citations.ts';
+
 // Markdown
 export { markdownToHtml } from './markdown.ts';
 
 // Transcript
 export { formatChatAsMarkdown, copyChatAsMarkdown } from './transcript.ts';
+
+// Tool timeline primitives
+export {
+	buildMessageTimeline,
+	buildToolGroups,
+	type MessageTimelineItem,
+	type MessageTimelineOptions,
+	type ToolGroup,
+} from './tool-timeline.ts';
 
 // Diff helpers
 export {
@@ -46,6 +75,25 @@ export {
 	type CanonicalDiffStatus,
 	type CanonicalDiffType,
 } from './diff.ts';
+
+// Tool renderer factories
+export {
+	ArtifactStatusCard,
+	createArtifactStatusToolRenderer,
+	createPendingActionDiffRenderer,
+	createQuestionToolRenderer,
+	parseArtifactStatusFromToolGroup,
+	parseQuestionPayloadFromToolGroup,
+	type ArtifactStatus,
+	type ArtifactStatusCardLabels,
+	type ArtifactStatusCardProps,
+	type ArtifactStatusPayload,
+	type ArtifactStatusThumbnail,
+	type ArtifactStatusToolRendererOptions,
+	type PendingActionDiffRendererOptions,
+	type QuestionToolPayload,
+	type QuestionToolRendererOptions,
+} from './tool-renderers.tsx';
 
 // Client context
 export {
@@ -84,7 +132,6 @@ export {
 export {
 	ToolMessage,
 	type ToolMessageProps,
-	type ToolGroup,
 	type ToolRenderer,
 	type ToolRendererContext,
 } from './components/ToolMessage.tsx';
@@ -139,6 +186,13 @@ export {
 	type FloatingChatShellSlot,
 	type FloatingChatShellState,
 } from './components/FloatingChatShell.tsx';
+
+export {
+	CitationsList,
+	CitationBadge,
+	type CitationsListProps,
+	type CitationBadgeProps,
+} from './components/CitationsList.tsx';
 
 // Hooks
 export {

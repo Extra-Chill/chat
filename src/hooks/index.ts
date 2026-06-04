@@ -15,3 +15,4 @@ export {
 	type LoadingMessagesConfig,
 	type UseLoadingMessagesReturn,
 } from './useLoadingMessages.ts';
+export { useMessageCitations } from '../citations.ts';
