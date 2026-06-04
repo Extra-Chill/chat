@@ -56,7 +56,7 @@ export interface MediaAttachment {
 	mimeType?: string;
 	/** File size in bytes. */
 	size?: number;
-	/** Consumer media library attachment ID. */
+	/** Backend media attachment ID. */
 	mediaId?: number;
 	/** Thumbnail URL for previews. */
 	thumbnailUrl?: string;

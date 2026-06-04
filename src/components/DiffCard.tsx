@@ -35,7 +35,7 @@ type DiffCardStatus = 'pending' | 'accepted' | 'rejected';
  * Portable diff visualization card.
  *
  * Renders a before/after comparison with word-level `<ins>` / `<del>` tags
- * and Accept / Reject buttons. Pure React — no Gutenberg or WordPress
+ * and Accept / Reject buttons. Pure React with no host application
  * dependencies. Works anywhere `@extrachill/chat` is consumed.
  *
  * @example

@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useRef } from 'react';
 import type { ChatMessage as ChatMessageType, ContentFormat, ToolCall } from './types/index.ts';
 import type { FetchFn, MediaUploadFn } from './api.ts';
+import type { ChatRunAdapter } from './run-control.ts';
 import type { ToolRenderer } from './components/ToolMessage.tsx';
 import { useChat, type UseChatOptions } from './hooks/useChat.ts';
 import { useLoadingMessages, type LoadingMessagesConfig } from './hooks/useLoadingMessages.ts';
@@ -144,17 +145,12 @@ export interface ChatProps {
 	 * Must upload the file and return a URL and/or media ID.
 	 * When not provided, the attach button is hidden.
 	 *
-	 * @example
-	 * ```tsx
-	 * <Chat
-	 *   mediaUploadFn={async (file) => {
-	 *     const media = await uploadMedia(file);
-	 *     return { url: media.url, media_id: media.id };
-	 *   }}
-	 * />
-	 * ```
+	 * The upload function is owned by the consumer because storage and
+	 * authorization are backend-specific.
 	 */
 	mediaUploadFn?: MediaUploadFn;
+	/** Optional adapter that supplies long-running turn controls. */
+	runAdapter?: ChatRunAdapter;
 	/** Optional long-running turn capabilities supplied by the backend adapter. */
 	runCapabilities?: UseChatOptions['runCapabilities'];
 	/** Active backend run ID, when the adapter already knows it. */
@@ -169,7 +165,7 @@ export interface ChatProps {
 	cancelLabel?: string;
 	/**
 	 * Arbitrary metadata forwarded to the backend with each message.
-	 * Use for client-side context injection (e.g. `{ client_context: { tab: 'compose', postId: 123 } }`).
+	 * Use for client-side context injection (e.g. `{ clientContext: { tab: 'compose' } }`).
 	 */
 	metadata?: Record<string, unknown>;
 	/** Include registered client-context metadata with each sent message. Defaults to false. */
@@ -203,18 +199,18 @@ export interface ChatProps {
  *
  * Composes all the primitives (messages, input, typing, sessions, etc.)
  * into a complete chat experience. For full control, use the individual
- * components and `useChat` hook directly.
- *
- * @example
- * ```tsx
- * import { Chat } from '@extrachill/chat';
- *
- * function ChatSurface() {
- *   return (
- *     <Chat
- *       basePath="/chat"
- *       fetchFn={fetchChatJson}
- *     />
+	 * components and `useChat` hook directly.
+	 *
+	 * @example
+	 * ```tsx
+	 * import { Chat } from '@extrachill/chat';
+	 *
+	 * function ChatSurface() {
+	 *   return (
+	 *     <Chat
+	 *       basePath="/chat"
+	 *       fetchFn={fetchChatJson}
+	 *     />
  *   );
  * }
  * ```
@@ -251,6 +247,7 @@ export function Chat({
 	allowAttachments,
 	acceptFileTypes,
 	mediaUploadFn,
+	runAdapter,
 	runCapabilities,
 	activeRunId,
 	getRunId,
@@ -293,6 +290,7 @@ export function Chat({
 		metadata,
 		clientContext: resolvedClientContext,
 		mediaUploadFn,
+		runAdapter,
 		runCapabilities,
 		activeRunId,
 		getRunId,

@@ -8,33 +8,27 @@ import type {
 	SendAttachment,
 	MediaUploadFn,
 	ChatAdapter,
-	ChatRunCapabilities as AdapterChatRunCapabilities,
-	CancelRunInput as AdapterCancelRunInput,
-	QueueMessageInput as AdapterQueueMessageInput,
-	QueueMessageResult as AdapterQueueMessageResult,
+	ChatRunCapabilities,
+	CancelRunInput,
+	QueueMessageInput,
+	QueueMessageResult,
 } from '../api.ts';
+import type { ChatRun, ChatRunAdapter, ChatRunStatus } from '../run-control.ts';
 import {
 	createRestChatAdapter,
 } from '../api.ts';
 
-export type ChatRunCapabilities = AdapterChatRunCapabilities;
-
-export type ChatRunStatus = 'queued' | 'running' | 'cancelling' | 'cancelled' | 'completed' | 'failed';
-
-export interface ChatRun {
-	runId: string;
-	sessionId: string;
-	status?: ChatRunStatus;
-	startedAt?: string;
-	updatedAt?: string;
-	metadata?: Record<string, unknown>;
-}
-
-export type CancelRunInput = AdapterCancelRunInput;
-
-export interface QueueMessageInput extends AdapterQueueMessageInput {}
-
-export interface QueueMessageResult extends AdapterQueueMessageResult, Partial<ChatRun> {}
+export type {
+	ChatRun,
+	ChatRunAdapter,
+	ChatRunStatus,
+} from '../run-control.ts';
+export type {
+	CancelRunInput,
+	ChatRunCapabilities,
+	QueueMessageInput,
+	QueueMessageResult,
+} from '../api.ts';
 
 /**
  * Configuration for the useChat hook.
@@ -85,8 +79,8 @@ export interface UseChatOptions {
 	onResponseMetadata?: (metadata: Record<string, unknown>) => void;
 	/**
 	 * Arbitrary metadata forwarded to the backend with each message.
-	 * Use for context scoping (e.g. `{ selected_pipeline_id: 42 }`,
-	 * `{ post_id: 100, context: 'editor' }`).
+	 * Use for context scoping (e.g. `{ projectId: 42 }`,
+	 * `{ context: 'editor' }`).
 	 */
 	metadata?: Record<string, unknown>;
 	/** Client context forwarded separately from message metadata. */
@@ -101,6 +95,8 @@ export interface UseChatOptions {
 	 * in the composed Chat component) because files cannot be processed.
 	 */
 	mediaUploadFn?: MediaUploadFn;
+	/** Optional adapter that supplies long-running turn controls. */
+	runAdapter?: ChatRunAdapter;
 	/** Optional long-running turn capabilities supplied by the backend adapter. */
 	runCapabilities?: ChatRunCapabilities;
 	/** Active backend run ID, when the adapter already knows it. */
@@ -183,8 +179,8 @@ function generateMessageId(): string {
 /**
  * Extract a readable error message from any error shape.
  *
- * Handles Error instances, structured fetch error objects
- * ({ code, message, data }), and plain strings.
+	 * Handles Error instances, structured fetch error objects
+	 * ({ code, message, data }), and plain strings.
  */
 function toError(err: unknown): Error {
 	if (err instanceof Error) return err;
@@ -210,11 +206,11 @@ function extractRunId(metadata: Record<string, unknown>): string | null {
  * by calling the standard chat REST endpoints directly.
  *
  * @example
- * ```tsx
- * const chat = useChat({
- *   basePath: '/chat',
- *   fetchFn: fetchChatJson,
- * });
+	 * ```tsx
+	 * const chat = useChat({
+	 *   basePath: '/chat',
+	 *   fetchFn: fetchChatJson,
+	 * });
  *
  * return (
  *   <>
@@ -240,6 +236,7 @@ export function useChat({
 	metadata,
 	clientContext,
 	mediaUploadFn,
+	runAdapter,
 	runCapabilities,
 	activeRunId,
 	getRunId,
@@ -272,11 +269,12 @@ export function useChat({
 	const unreadCount = activeSession?.unreadCount ?? 0;
 	const adapterRef = useRef<ChatAdapter>(resolvedAdapter);
 	adapterRef.current = resolvedAdapter;
-	const resolvedRunCapabilities = runCapabilities ?? resolvedAdapter.runCapabilities ?? {};
-	const resolvedCancelRun = onCancelRun ?? resolvedAdapter.cancelRun;
-	const resolvedQueueMessage = onQueueMessage ?? resolvedAdapter.queueMessage;
+	const resolvedRunCapabilities = runCapabilities ?? runAdapter?.capabilities ?? resolvedAdapter.runCapabilities ?? {};
+	const resolvedCancelRun = onCancelRun ?? runAdapter?.cancel ?? resolvedAdapter.cancelRun;
+	const resolvedQueueMessage = onQueueMessage ?? runAdapter?.queue ?? resolvedAdapter.queueMessage;
 	const resolvedUploadFile = mediaUploadFn ?? resolvedAdapter.uploadFile;
-	const resolvedActiveRunId = activeRunId ?? metadataRunId;
+	const resolvedActiveRunId = activeRunId ?? runAdapter?.activeRunId ?? metadataRunId;
+	const resolvedGetRunId = getRunId ?? runAdapter?.getRunId;
 	const canCancelRun = !!(
 		isLoading &&
 		resolvedRunCapabilities.cancel &&
@@ -309,11 +307,11 @@ export function useChat({
 	runCapabilitiesRef.current = resolvedRunCapabilities;
 	const activeRunIdRef = useRef(resolvedActiveRunId);
 	activeRunIdRef.current = resolvedActiveRunId;
-	const getRunIdRef = useRef(getRunId);
-	getRunIdRef.current = getRunId;
-	const onCancelRunRef = useRef(onCancelRun);
+	const getRunIdRef = useRef(resolvedGetRunId);
+	getRunIdRef.current = resolvedGetRunId;
+	const onCancelRunRef = useRef(resolvedCancelRun);
 	onCancelRunRef.current = resolvedCancelRun;
-	const onQueueMessageRef = useRef(onQueueMessage);
+	const onQueueMessageRef = useRef(resolvedQueueMessage);
 	onQueueMessageRef.current = resolvedQueueMessage;
 	const sessionContextRef = useRef(sessionContext);
 	sessionContextRef.current = sessionContext;
@@ -451,7 +449,7 @@ export function useChat({
 
 			// Upload files via the consumer's upload function, or fall back
 			// to metadata-only attachments (which the backend will reject
-			// without a url/media_id).
+			// without a URL or backend-resolvable ID).
 			const uploadFn = mediaUploadFnRef.current;
 			if (uploadFn) {
 				try {

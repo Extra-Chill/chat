@@ -108,6 +108,23 @@ export {
 	type ClientContextMetadataOptions,
 } from './client-context.ts';
 
+// Run control
+export {
+	createRunControlAdapter,
+	normalizeRunEvent,
+	type CancelRunInput,
+	type ChatRun,
+	type ChatRunAdapter,
+	type ChatRunAttachment,
+	type ChatRunCapabilities,
+	type ChatRunEvent,
+	type ChatRunStatus,
+	type ChatRunUploadFn,
+	type QueueMessageInput,
+	type QueueMessageResult,
+	type RunControlAdapterOptions,
+} from './run-control.ts';
+
 // Components
 export {
 	ChatMessage as ChatMessageComponent,
@@ -197,15 +214,15 @@ export {
 // Hooks
 export {
 	useChat,
-	type ChatRun,
-	type CancelRunInput,
-	type ChatRunCapabilities,
-	type ChatRunStatus,
-	type QueueMessageInput,
-	type QueueMessageResult,
 	type UseChatOptions,
 	type UseChatReturn,
 } from './hooks/useChat.ts';
+
+export {
+	useRunEvents,
+	type UseRunEventsOptions,
+	type UseRunEventsReturn,
+} from './hooks/useRunEvents.ts';
 
 export {
 	useLoadingMessages,
