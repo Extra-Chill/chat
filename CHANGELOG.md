@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.14.0] - 2026-06-04
+
+### Added
+- add run control adapter primitives
+- add floating chat shell
+- expose tool timeline primitives
+- add reusable tool renderer factories
+- add citation rendering primitives
+
+### Fixed
+- add adapter-first chat envelope
+
 ## [0.13.0] - 2026-05-31
 
 ### Added
