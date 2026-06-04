@@ -1,9 +1,8 @@
 /**
  * REST API contract types.
  *
- * These describe the expected shape of the chat REST endpoints.
- * Any backend that wants to work with this package implements
- * these same endpoints and response shapes.
+ * These describe the package's default endpoint shape. Adapters may normalize
+ * different backend responses into these structures before rendering.
  */
 
 /**
@@ -24,6 +23,27 @@ export interface RawAttachment {
 	thumbnail_url?: string;
 }
 
+export interface RawSource {
+	id?: string;
+	title?: string;
+	url?: string;
+	label?: string;
+	metadata?: Record<string, unknown>;
+}
+
+export interface RawCitation {
+	id?: string;
+	index?: number;
+	source?: RawSource;
+	source_id?: string;
+	title?: string;
+	url?: string;
+	label?: string;
+	snippet?: string;
+	quote?: string;
+	metadata?: Record<string, unknown>;
+}
+
 export interface RawMessage {
 	role: 'user' | 'assistant';
 	content: string;
@@ -41,6 +61,10 @@ export interface RawMessage {
 		attachments?: RawAttachment[];
 		/** Media produced by tool results. */
 		media?: RawAttachment[];
+		/** Sources cited by this message. */
+		citations?: RawCitation[];
+		/** Source records that citations may reference by source_id. */
+		sources?: RawSource[];
 	};
 	tool_calls?: Array<{
 		id?: string;

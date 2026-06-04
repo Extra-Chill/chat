@@ -63,6 +63,40 @@ export interface MediaAttachment {
 }
 
 /**
+ * A source that a citation points to.
+ */
+export interface ChatSource {
+	/** Stable source identifier from the adapter or backend. */
+	id?: string;
+	/** Human-readable source title. */
+	title?: string;
+	/** Canonical source URL, when available. */
+	url?: string;
+	/** Source author, publisher, or container label. */
+	label?: string;
+	/** Arbitrary adapter metadata kept out of the rendering contract. */
+	metadata?: Record<string, unknown>;
+}
+
+/**
+ * A citation attached to a message.
+ */
+export interface ChatCitation {
+	/** Stable citation identifier from the adapter or backend. */
+	id?: string;
+	/** One-based display index. Consumers may omit it and let renderers derive one. */
+	index?: number;
+	/** Source data for the cited material. */
+	source?: ChatSource;
+	/** Cited quote or surrounding snippet. */
+	snippet?: string;
+	/** URL for this exact citation when it differs from the source URL. */
+	url?: string;
+	/** Arbitrary adapter metadata kept out of the rendering contract. */
+	metadata?: Record<string, unknown>;
+}
+
+/**
  * A single message in a chat conversation.
  */
 export interface ChatMessage {
@@ -80,6 +114,8 @@ export interface ChatMessage {
 	toolResult?: ToolResultMeta;
 	/** Media attachments (images, videos, files) on this message. */
 	attachments?: MediaAttachment[];
+	/** Citations or sources referenced by this message. */
+	citations?: ChatCitation[];
 	/** Client-side delivery state for optimistic messages. */
 	deliveryStatus?: 'queued' | 'failed';
 }

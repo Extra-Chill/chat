@@ -3,6 +3,8 @@ export type {
 	ToolCall,
 	ToolResultMeta,
 	MediaAttachment,
+	ChatCitation,
+	ChatSource,
 	ChatMessage,
 	ContentFormat,
 } from './message.ts';
@@ -15,7 +17,9 @@ export type {
 
 export type {
 	RawAttachment,
+	RawCitation,
 	RawMessage,
+	RawSource,
 	RawSession,
 	SendRequest,
 	SendResponse,

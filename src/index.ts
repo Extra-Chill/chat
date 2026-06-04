@@ -4,13 +4,17 @@ export type {
 	ToolCall,
 	ToolResultMeta,
 	MediaAttachment,
+	ChatCitation,
+	ChatSource,
 	ChatMessage,
 	ContentFormat,
 	ChatSession,
 	ChatAvailability,
 	ChatInitialState,
 	RawAttachment,
+	RawCitation,
 	RawMessage,
+	RawSource,
 	RawSession,
 	SessionMetadata,
 } from './types/index.ts';
@@ -41,6 +45,9 @@ export {
 
 // Normalizer
 export { normalizeMessage, normalizeConversation, normalizeSession } from './normalizer.ts';
+
+// Citations
+export { getMessageCitations, useMessageCitations } from './citations.ts';
 
 // Markdown
 export { markdownToHtml } from './markdown.ts';
@@ -144,6 +151,13 @@ export {
 	AvailabilityGate,
 	type AvailabilityGateProps,
 } from './components/AvailabilityGate.tsx';
+
+export {
+	CitationsList,
+	CitationBadge,
+	type CitationsListProps,
+	type CitationBadgeProps,
+} from './components/CitationsList.tsx';
 
 // Hooks
 export {
