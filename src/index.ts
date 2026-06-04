@@ -105,6 +105,7 @@ export {
 	type ClientContextProviderSnapshot,
 	type ClientContextSnapshot,
 	type ClientContextRegistry,
+	type ClientContextMetadataOptions,
 } from './client-context.ts';
 
 // Run control
@@ -195,6 +196,13 @@ export {
 	AvailabilityGate,
 	type AvailabilityGateProps,
 } from './components/AvailabilityGate.tsx';
+
+export {
+	FloatingChatShell,
+	type FloatingChatShellProps,
+	type FloatingChatShellSlot,
+	type FloatingChatShellState,
+} from './components/FloatingChatShell.tsx';
 
 export {
 	CitationsList,

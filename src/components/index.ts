@@ -8,4 +8,5 @@ export { SessionSwitcher, type SessionSwitcherProps } from './SessionSwitcher.ts
 export { MessageSuggestions, type ChatMessageSuggestion, type MessageSuggestionsProps } from './MessageSuggestions.tsx';
 export { ErrorBoundary, type ErrorBoundaryProps } from './ErrorBoundary.tsx';
 export { AvailabilityGate, type AvailabilityGateProps } from './AvailabilityGate.tsx';
+export { FloatingChatShell, type FloatingChatShellProps, type FloatingChatShellSlot, type FloatingChatShellState } from './FloatingChatShell.tsx';
 export { CitationsList, CitationBadge, type CitationsListProps, type CitationBadgeProps } from './CitationsList.tsx';

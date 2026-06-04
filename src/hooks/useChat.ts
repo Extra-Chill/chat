@@ -179,8 +179,8 @@ function generateMessageId(): string {
 /**
  * Extract a readable error message from any error shape.
  *
- * Handles Error instances, fetch error objects
- * ({ code, message, data }), and plain strings.
+	 * Handles Error instances, structured fetch error objects
+	 * ({ code, message, data }), and plain strings.
  */
 function toError(err: unknown): Error {
 	if (err instanceof Error) return err;
@@ -206,11 +206,11 @@ function extractRunId(metadata: Record<string, unknown>): string | null {
  * by calling the standard chat REST endpoints directly.
  *
  * @example
- * ```tsx
- * const chat = useChat({
- *   basePath: '/api/chat',
- *   fetchFn: fetchChatJson,
- * });
+	 * ```tsx
+	 * const chat = useChat({
+	 *   basePath: '/chat',
+	 *   fetchFn: fetchChatJson,
+	 * });
  *
  * return (
  *   <>

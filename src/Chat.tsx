@@ -13,20 +13,38 @@ import { TypingIndicator } from './components/TypingIndicator.tsx';
 import { SessionSwitcher } from './components/SessionSwitcher.tsx';
 import { MessageSuggestions, type ChatMessageSuggestion } from './components/MessageSuggestions.tsx';
 import type { UseChatReturn } from './hooks/useChat.ts';
+import { useClientContextMetadata, type ClientContextMetadataOptions } from './client-context.ts';
 
 export type ChatSessionUi = 'list' | 'none';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function getClientContextPayload(
+	metadata: Record<string, unknown>,
+	options: ClientContextMetadataOptions | undefined,
+): Record<string, unknown> | undefined {
+	const metadataKey = options?.metadataKey ?? 'client_context';
+	const payload = metadata[metadataKey];
+	if (isRecord(payload)) {
+		return payload;
+	}
+
+	return Object.keys(metadata).length > 0 ? metadata : undefined;
+}
+
 export interface ChatProps {
+	/** Adapter that owns chat transport and backend-specific behavior. */
+	adapter?: UseChatOptions['adapter'];
 	/**
-	 * Base path for the chat REST endpoints.
-	 * e.g. '/api/chat'
+	 * Base path for the default REST adapter. Required when `adapter` is not provided.
 	 */
-	basePath: string;
+	basePath?: string;
 	/**
-	 * Fetch function for API calls. Must accept { path, method?, data? }
-	 * and return parsed JSON.
+	 * Fetch function for the default REST adapter. Required when `adapter` is not provided.
 	 */
-	fetchFn: FetchFn;
+	fetchFn?: FetchFn;
 	/**
 	 * Agent ID to scope the chat to.
 	 */
@@ -150,6 +168,10 @@ export interface ChatProps {
 	 * Use for client-side context injection (e.g. `{ clientContext: { tab: 'compose' } }`).
 	 */
 	metadata?: Record<string, unknown>;
+	/** Include registered client-context metadata with each sent message. Defaults to false. */
+	clientContext?: boolean;
+	/** Configure the automatically collected client-context metadata payload. */
+	clientContextOptions?: ClientContextMetadataOptions;
 	/** Deprecated: built-in copy transcript button UI is no longer rendered. */
 	showCopyTranscript?: boolean;
 	/** Deprecated legacy prop retained for compatibility. */
@@ -177,22 +199,24 @@ export interface ChatProps {
  *
  * Composes all the primitives (messages, input, typing, sessions, etc.)
  * into a complete chat experience. For full control, use the individual
- * components and `useChat` hook directly.
- *
- * @example
- * ```tsx
- * import { Chat } from '@extrachill/chat';
- * function AppChat() {
- *   return (
- *     <Chat
- *       basePath="/api/chat"
- *       fetchFn={fetchChatJson}
- *     />
+	 * components and `useChat` hook directly.
+	 *
+	 * @example
+	 * ```tsx
+	 * import { Chat } from '@extrachill/chat';
+	 *
+	 * function ChatSurface() {
+	 *   return (
+	 *     <Chat
+	 *       basePath="/chat"
+	 *       fetchFn={fetchChatJson}
+	 *     />
  *   );
  * }
  * ```
  */
 export function Chat({
+	adapter,
 	basePath,
 	fetchFn,
 	agentId,
@@ -231,6 +255,8 @@ export function Chat({
 	onQueueMessage,
 	cancelLabel,
 	metadata,
+	clientContext = false,
+	clientContextOptions,
 	showCopyTranscript = false,
 	copyTranscriptLabel,
 	copyTranscriptCopiedLabel,
@@ -240,8 +266,16 @@ export function Chat({
 }: ChatProps) {
 	// Attachments are only functional when a mediaUploadFn is provided.
 	const resolvedAllowAttachments = allowAttachments ?? !!mediaUploadFn;
+	const clientContextMetadata = useClientContextMetadata(clientContextOptions);
+	const resolvedClientContext = useMemo(
+		() => clientContext
+			? getClientContextPayload(clientContextMetadata, clientContextOptions)
+			: undefined,
+		[clientContext, clientContextMetadata, clientContextOptions],
+	);
 
 	const chat = useChat({
+		adapter,
 		basePath,
 		fetchFn,
 		agentId,
@@ -254,6 +288,7 @@ export function Chat({
 		onResponseMetadata,
 		sessionContext,
 		metadata,
+		clientContext: resolvedClientContext,
 		mediaUploadFn,
 		runAdapter,
 		runCapabilities,

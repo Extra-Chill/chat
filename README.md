@@ -14,19 +14,19 @@ npm install @extrachill/chat
 import { Chat } from '@extrachill/chat';
 import '@extrachill/chat/css';
 
-function AppChat() {
-  return (
-    <Chat
-      basePath="/api/chat"
-      fetchFn={fetchChatJson}
-    />
-  );
+function ChatSurface() {
+	return (
+		<Chat
+			basePath="/chat"
+			fetchFn={fetchChatJson}
+		/>
+	);
 }
 ```
 
 ## What's Included
 
-**Components** — `Chat`, `ChatMessages`, `ChatMessage`, `ChatInput`, `TypingIndicator`, `ToolMessage`, `SessionSwitcher`, `ErrorBoundary`, `AvailabilityGate`
+**Components** — `Chat`, `FloatingChatShell`, `ChatMessages`, `ChatMessage`, `ChatInput`, `TypingIndicator`, `ToolMessage`, `SessionSwitcher`, `ErrorBoundary`, `AvailabilityGate`
 
 **Hook** — `useChat` manages messages, sessions, multi-turn continuation loops, and availability state
 
@@ -71,10 +71,10 @@ Pass `messageSuggestions` to offer optional prompt starters on fresh conversatio
 
 ```tsx
 <Chat
-  basePath="/api/chat"
-  fetchFn={fetchChatJson}
-  messageSuggestions={[
-    {
+	basePath="/chat"
+	fetchFn={fetchChatJson}
+	messageSuggestions={[
+		{
       label: 'Plan my homepage',
       message: 'Help me plan the homepage for my site.',
       description: 'Start with goals and sections',
@@ -86,6 +86,56 @@ Pass `messageSuggestions` to offer optional prompt starters on fresh conversatio
   ]}
 />
 ```
+
+## Floating Shell
+
+Use `FloatingChatShell` when you want a launcher and floating drawer around the same backend-agnostic `Chat` component. The shell owns only visibility, expanded mode, unread badge state, and generic slots; product-specific UI should be supplied by the consumer.
+
+```tsx
+import { FloatingChatShell } from '@extrachill/chat';
+
+<FloatingChatShell
+  basePath="/chat"
+  fetchFn={fetchChatJson}
+  title="Assistant"
+  header={({ close }) => (
+    <div className="my-chat-header">
+      <strong>Assistant</strong>
+      <button type="button" onClick={close}>Close</button>
+    </div>
+  )}
+  launcher={({ toggleOpen, unreadCount }) => (
+    <button type="button" onClick={toggleOpen}>
+      Chat{unreadCount > 0 ? ` (${unreadCount})` : ''}
+    </button>
+  )}
+/>
+```
+
+You can also control the shell externally with `open`, `onOpenChange`, `expanded`, and `onExpandedChange`.
+
+## Client Context
+
+Register client-context providers when a surface has extra local state the backend may need. `Chat` includes that metadata only when `clientContext` is enabled, so existing inline usage is unchanged by default.
+
+```tsx
+import { Chat, registerClientContextProvider } from '@extrachill/chat';
+
+registerClientContextProvider({
+  id: 'current-document',
+  priority: 10,
+  getContext: () => ({ documentId: getCurrentDocumentId() }),
+});
+
+<Chat
+  basePath="/chat"
+  fetchFn={fetchChatJson}
+  clientContext
+  clientContextOptions={{ metadataKey: 'client_context' }}
+/>
+```
+
+Manual consumers can keep using `useClientContextMetadata()` and pass the result through `metadata` themselves.
 
 ## Long-Running Turns
 
