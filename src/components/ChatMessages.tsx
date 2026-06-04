@@ -1,7 +1,8 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import type { ChatMessage as ChatMessageType, ContentFormat } from '../types/index.ts';
+import { buildMessageTimeline } from '../tool-timeline.ts';
 import { ChatMessage } from './ChatMessage.tsx';
-import { ToolMessage, type ToolGroup, type ToolRenderer, type ToolRendererContext } from './ToolMessage.tsx';
+import { ToolMessage, type ToolRenderer, type ToolRendererContext } from './ToolMessage.tsx';
 
 export interface ChatMessagesProps {
 	/** All messages in the conversation. */
@@ -75,7 +76,7 @@ export function ChatMessages({
 		});
 	}, [messages, footer, autoScroll]);
 
-	const displayItems = buildDisplayItems(messages, showTools);
+	const displayItems = buildMessageTimeline(messages, { showTools });
 	const baseClass = 'ec-chat-messages';
 	const classes = [baseClass, className].filter(Boolean).join(' ');
 	const rendererContext = toolRendererContext ?? {
@@ -134,137 +135,4 @@ export function ChatMessages({
 			<div ref={bottomRef} />
 		</div>
 	);
-}
-
-type DisplayItem =
-	| { type: 'message'; message: ChatMessageType }
-	| { type: 'tool-group'; group: ToolGroup };
-
-/**
- * Build display items from raw messages.
- *
- * - Filters out system messages
- * - Groups tool_call + tool_result pairs
- * - Returns ordered display items
- */
-function buildDisplayItems(messages: ChatMessageType[], showTools: boolean): DisplayItem[] {
-	const items: DisplayItem[] = [];
-	const toolResultMap = new Map<string, ChatMessageType>();
-	const pendingStandaloneToolGroups: DisplayItem[] = [];
-	const flushPendingStandaloneTools = () => {
-		if (pendingStandaloneToolGroups.length === 0) return;
-		items.push(...pendingStandaloneToolGroups);
-		pendingStandaloneToolGroups.length = 0;
-	};
-
-	// Pre-index tool results by tool name for pairing
-	if (showTools) {
-		for (const msg of messages) {
-			if (msg.role === 'tool_result' && msg.toolResult) {
-				toolResultMap.set(toolResultKey(msg.toolResult.toolCallId, msg.toolResult.toolName), msg);
-			}
-		}
-	}
-
-	const processedToolResults = new Set<string>();
-
-	for (const msg of messages) {
-		// Skip system messages
-		if (msg.role === 'system') continue;
-
-		// Skip tool messages when tools are hidden
-		if (!showTools && (msg.role === 'tool_call' || msg.role === 'tool_result')) continue;
-
-		// Handle user/assistant messages (assistant messages with toolCalls get both treatments)
-		if (msg.role === 'user' || msg.role === 'assistant') {
-			// Standalone tool envelopes often precede the assistant's follow-up text.
-			// Keep their rendered cards attached to that response instead of jumping above it.
-			if (msg.role === 'user') {
-				flushPendingStandaloneTools();
-			}
-
-			// If assistant message has tool calls, render the text part as a message
-			// and the tool calls as tool groups
-			if (msg.role === 'assistant' && msg.toolCalls?.length && showTools) {
-				// Only render text bubble if there's actual text content
-				if (msg.content.trim()) {
-					items.push({ type: 'message', message: msg });
-				}
-
-				for (const call of msg.toolCalls) {
-					const resultMsg = toolResultMap.get(toolResultKey(call.id, call.name));
-					if (resultMsg) {
-						processedToolResults.add(resultMsg.id);
-					}
-
-					items.push({
-						type: 'tool-group',
-						group: {
-							callMessage: {
-								...msg,
-								content: '',
-								toolCalls: [call],
-							},
-							resultMessage: resultMsg ?? null,
-							toolName: call.name,
-							parameters: call.parameters,
-							success: resultMsg?.toolResult?.success ?? null,
-						},
-					});
-				}
-			} else {
-				items.push({ type: 'message', message: msg });
-			}
-
-			if (msg.role === 'assistant') {
-				flushPendingStandaloneTools();
-			}
-			continue;
-		}
-
-		// Handle standalone tool_call messages
-		if (msg.role === 'tool_call' && showTools) {
-			const toolName = msg.toolCalls?.[0]?.name ?? 'unknown';
-			const toolCallId = msg.toolCalls?.[0]?.id;
-			const resultMsg = toolResultMap.get(toolResultKey(toolCallId, toolName));
-			if (resultMsg) {
-				processedToolResults.add(resultMsg.id);
-			}
-
-			pendingStandaloneToolGroups.push({
-				type: 'tool-group',
-				group: {
-					callMessage: msg,
-					resultMessage: resultMsg ?? null,
-					toolName,
-					parameters: msg.toolCalls?.[0]?.parameters ?? {},
-					success: resultMsg?.toolResult?.success ?? null,
-				},
-			});
-			continue;
-		}
-
-		// Handle orphaned tool_result messages
-		if (msg.role === 'tool_result' && showTools && !processedToolResults.has(msg.id)) {
-			flushPendingStandaloneTools();
-			items.push({
-				type: 'tool-group',
-				group: {
-					callMessage: msg,
-					resultMessage: msg,
-					toolName: msg.toolResult?.toolName ?? 'unknown',
-					parameters: {},
-					success: msg.toolResult?.success ?? null,
-				},
-			});
-		}
-	}
-
-	flushPendingStandaloneTools();
-
-	return items;
-}
-
-function toolResultKey(toolCallId: string | undefined, toolName: string): string {
-	return toolCallId ? `id:${toolCallId}` : `name:${toolName}`;
 }

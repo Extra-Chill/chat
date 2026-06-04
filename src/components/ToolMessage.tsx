@@ -1,22 +1,8 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import type { ChatMessage } from '../types/index.ts';
+import type { ToolGroup } from '../tool-timeline.ts';
 
-/**
- * A paired tool call + result for display.
- */
-export interface ToolGroup {
-	/** The message containing the tool call. */
-	callMessage: ChatMessage;
-	/** The result message (null if still pending). */
-	resultMessage: ChatMessage | null;
-	/** Tool function name. */
-	toolName: string;
-	/** Parameters passed to the tool. */
-	parameters: Record<string, unknown>;
-	/** Whether the tool succeeded (null if pending). */
-	success: boolean | null;
-}
+export type { ToolGroup } from '../tool-timeline.ts';
 
 export interface ToolRendererContext {
 	/** Send a follow-up user message. */
