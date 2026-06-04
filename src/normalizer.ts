@@ -7,9 +7,9 @@
  * maps them into the package's role-based message model.
  */
 
-import type { ChatMessage, MediaAttachment, ToolCall } from './types/message.ts';
+import type { ChatCitation, ChatMessage, ChatSource, MediaAttachment, ToolCall } from './types/message.ts';
 import type { ChatSession } from './types/session.ts';
-import type { RawMessage, RawAttachment, RawSession } from './types/api.ts';
+import type { RawMessage, RawAttachment, RawCitation, RawSession, RawSource } from './types/api.ts';
 
 let idCounter = 0;
 function generateId(): string {
@@ -89,6 +89,11 @@ export function normalizeMessage(raw: RawMessage, index: number): ChatMessage {
 	const attachments = normalizeAttachments(raw);
 	if (attachments.length > 0) {
 		message.attachments = attachments;
+	}
+
+	const citations = normalizeCitations(raw);
+	if (citations.length > 0) {
+		message.citations = citations;
 	}
 
 	// Assistant messages may carry tool_calls at the top level
@@ -201,4 +206,57 @@ function normalizeAttachments(raw: RawMessage): MediaAttachment[] {
 	}
 
 	return attachments;
+}
+
+function normalizeCitations(raw: RawMessage): ChatCitation[] {
+	const rawCitations = raw.metadata?.citations;
+	if (!rawCitations?.length) return [];
+
+	const sourcesById = new Map<string, ChatSource>();
+	for (const rawSource of raw.metadata?.sources ?? []) {
+		const source = normalizeSource(rawSource);
+		if (source.id) {
+			sourcesById.set(source.id, source);
+		}
+	}
+
+	return rawCitations
+		.map((rawCitation) => normalizeCitation(rawCitation, sourcesById))
+		.filter((citation): citation is ChatCitation => citation !== null);
+}
+
+function normalizeCitation(raw: RawCitation, sourcesById: Map<string, ChatSource>): ChatCitation | null {
+	const source = raw.source
+		? normalizeSource(raw.source)
+		: raw.source_id
+			? sourcesById.get(raw.source_id) ?? normalizeSource({ ...raw, id: raw.source_id })
+			: normalizeSource(raw);
+
+	const citation: ChatCitation = {};
+	if (raw.id) citation.id = raw.id;
+	if (raw.index) citation.index = raw.index;
+	if (source && hasSourceData(source)) citation.source = source;
+	if (raw.snippet ?? raw.quote) citation.snippet = raw.snippet ?? raw.quote;
+	if (raw.url) citation.url = raw.url;
+	if (raw.metadata) citation.metadata = raw.metadata;
+
+	if (!citation.source && !citation.snippet && !citation.url && !citation.id) {
+		return null;
+	}
+
+	return citation;
+}
+
+function normalizeSource(raw: RawSource | RawCitation): ChatSource {
+	const source: ChatSource = {};
+	if (raw.id) source.id = raw.id;
+	if ('title' in raw && raw.title) source.title = raw.title;
+	if ('url' in raw && raw.url) source.url = raw.url;
+	if ('label' in raw && raw.label) source.label = raw.label;
+	if (raw.metadata) source.metadata = raw.metadata;
+	return source;
+}
+
+function hasSourceData(source: ChatSource): boolean {
+	return Boolean(source.id || source.title || source.url || source.label);
 }

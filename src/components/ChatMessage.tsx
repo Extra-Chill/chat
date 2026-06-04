@@ -1,6 +1,8 @@
 import { type ReactNode, lazy, Suspense } from 'react';
-import type { ChatMessage as ChatMessageType, ContentFormat, MediaAttachment } from '../types/index.ts';
+import type { ChatCitation, ChatMessage as ChatMessageType, ContentFormat, MediaAttachment } from '../types/index.ts';
 import { markdownToHtml } from '../markdown.ts';
+import { getMessageCitations } from '../citations.ts';
+import { CitationsList } from './CitationsList.tsx';
 
 const ReactMarkdown = lazy(() => import('react-markdown'));
 
@@ -15,6 +17,8 @@ export interface ChatMessageProps {
 	renderContent?: (content: string, role: ChatMessageType['role']) => ReactNode;
 	/** Additional CSS class name on the outer wrapper. */
 	className?: string;
+	/** Custom citation renderer. Set to null to hide default citation rendering. */
+	renderCitations?: ((citations: ChatCitation[], message: ChatMessageType) => ReactNode) | null;
 }
 
 /**
@@ -29,6 +33,7 @@ export function ChatMessage({
 	contentFormat = 'markdown',
 	renderContent,
 	className,
+	renderCitations,
 }: ChatMessageProps) {
 	const isUser = message.role === 'user';
 	const baseClass = 'ec-chat-message';
@@ -38,6 +43,8 @@ export function ChatMessage({
 
 	const hasText = message.content.trim().length > 0;
 	const hasAttachments = message.attachments && message.attachments.length > 0;
+	const citations = getMessageCitations(message);
+	const shouldRenderCitations = message.role === 'assistant' && citations.length > 0 && renderCitations !== null;
 
 	return (
 		<div className={classes} data-message-id={message.id}>
@@ -49,6 +56,11 @@ export function ChatMessage({
 				)}
 				{hasAttachments && (
 					<MessageAttachments attachments={message.attachments!} />
+				)}
+				{shouldRenderCitations && (
+					renderCitations
+						? renderCitations(citations, message)
+						: <CitationsList citations={citations} />
 				)}
 			</div>
 			{message.timestamp && (
