@@ -5,7 +5,7 @@
  * implements the same endpoint shapes works out of the box.
  *
  * The `fetchFn` parameter allows consumers to plug in their own
- * fetch implementation (e.g. @wordpress/api-fetch for cookie auth).
+ * authenticated fetch implementation.
  */
 
 import type { ChatMessage } from './types/message.ts';
@@ -23,10 +23,7 @@ import { normalizeConversation, normalizeMessage, normalizeSession } from './nor
 /**
  * A fetch-like function. Accepts path + options, returns parsed JSON.
  *
- * This matches @wordpress/api-fetch signature:
- *   apiFetch({ path: '/datamachine/v1/chat', method: 'POST', data: {...} })
- *
- * For non-WordPress contexts, consumers wrap native fetch:
+ * Consumers can wrap native fetch:
  *   (opts) => fetch(baseUrl + opts.path, { method: opts.method, body: JSON.stringify(opts.data) }).then(r => r.json())
  */
 export interface FetchOptions {
@@ -43,7 +40,7 @@ export interface FetchOptions {
 export type FetchFn = (options: FetchOptions) => Promise<unknown>;
 
 export interface ChatApiConfig {
-	/** Base path for the chat endpoints. */
+	/** Base path for the chat endpoints (e.g. '/api/chat'). */
 	basePath: string;
 	/** The fetch function to use for requests. */
 	fetchFn: FetchFn;
@@ -102,8 +99,14 @@ export interface QueueMessageResult {
 	queuedMessageId?: string;
 	/** Opaque ID for the queued or active run, when supplied by the adapter. */
 	runId?: string;
+	/** Session ID associated with the queued message, when supplied by the adapter. */
+	sessionId?: string;
+	/** Status for the queued or active run, when supplied by the adapter. */
+	status?: 'queued' | 'running' | 'cancelling' | 'cancelled' | 'completed' | 'failed';
 	/** Zero-based or one-based queue position, as reported by the adapter. */
 	position?: number;
+	startedAt?: string;
+	updatedAt?: string;
 	metadata?: Record<string, unknown>;
 }
 
@@ -112,6 +115,10 @@ export interface ChatRunCapabilities {
 	cancel?: boolean;
 	/** Whether the current backend adapter can queue follow-up messages. */
 	queue?: boolean;
+	/** Whether the current backend adapter can read run status. */
+	status?: boolean;
+	/** Whether the current backend adapter can read run events. */
+	events?: boolean;
 }
 
 export interface ChatAdapter {
@@ -141,19 +148,8 @@ export interface SendAttachment {
  * Upload function provided by the consumer to handle file uploads.
  *
  * Called for each file the user attaches before the chat message is sent.
- * Must upload the file to the consumer's storage (e.g. WordPress Media Library,
- * S3, etc.) and return a URL and/or media ID that the backend can resolve.
- *
- * @example
- * ```tsx
- * // WordPress consumer:
- * const mediaUploadFn: MediaUploadFn = async (file) => {
- *   const formData = new FormData();
- *   formData.append('file', file);
- *   const media = await apiFetch({ path: '/wp/v2/media', method: 'POST', body: formData });
- *   return { url: media.source_url, media_id: media.id };
- * };
- * ```
+ * Must upload the file to the consumer's storage and return a URL
+ * and/or media ID that the backend can resolve.
  */
 export type MediaUploadFn = (file: File) => Promise<{ url: string; media_id?: number }>;
 
@@ -193,11 +189,11 @@ export function createRestChatAdapter(config: ChatApiConfig): ChatAdapter {
  *
  * When attachments are provided, they are included in the JSON body
  * as structured metadata (not as file uploads — files should already
- * be in the WordPress media library or accessible by URL).
+ * be available to the backend by URL or ID).
  *
  * @param metadata - Arbitrary key-value pairs forwarded to the backend
- *   alongside the message (e.g. `{ selected_pipeline_id: 42 }` or
- *   `{ post_id: 100, context: 'editor' }`). The backend can use these
+ *   alongside the message (e.g. `{ projectId: 42 }` or
+ *   `{ context: 'editor' }`). The backend can use these
  *   to scope the AI's behavior. Not persisted as message content.
  */
 export async function sendMessage(

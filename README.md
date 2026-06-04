@@ -1,6 +1,6 @@
 # @extrachill/chat
 
-React chat UI components with a built-in REST API client. Speaks the standard chat message format natively — no adapters, no wrappers.
+React chat UI components with a built-in REST API client and backend-agnostic extension primitives.
 
 ## Install
 
@@ -13,14 +13,12 @@ npm install @extrachill/chat
 ```tsx
 import { Chat } from '@extrachill/chat';
 import '@extrachill/chat/css';
-import apiFetch from '@wordpress/api-fetch';
 
-function StudioChat() {
+function AppChat() {
   return (
     <Chat
-      basePath="/datamachine/v1/chat"
-      fetchFn={apiFetch}
-      agentId={5}
+      basePath="/api/chat"
+      fetchFn={fetchChatJson}
     />
   );
 }
@@ -33,6 +31,8 @@ function StudioChat() {
 **Hook** — `useChat` manages messages, sessions, multi-turn continuation loops, and availability state
 
 **API client** — `sendMessage`, `continueResponse`, `listSessions`, `loadSession`, `deleteSession`
+
+**Run control** — `createRunControlAdapter`, `useRunEvents`, and typed run/event primitives for cancel, queue, status, and event access
 
 **Normalizer** — `normalizeMessage`, `normalizeConversation`, `normalizeSession` for mapping raw backend messages into the UI model
 
@@ -50,7 +50,7 @@ The package expects these endpoints at `basePath`:
 | `GET` | `/{session_id}` | Load a single session's conversation |
 | `DELETE` | `/{session_id}` | Delete a session |
 
-Any backend implementing this contract works. The `fetchFn` prop accepts any function matching `(options: { path, method?, data? }) => Promise<json>` — `@wordpress/api-fetch` works directly.
+Any backend implementing this contract works. The `fetchFn` prop accepts any function matching `(options: { path, method?, data? }) => Promise<json>`.
 
 ## Theming
 
@@ -71,8 +71,8 @@ Pass `messageSuggestions` to offer optional prompt starters on fresh conversatio
 
 ```tsx
 <Chat
-  basePath="/datamachine/v1/chat"
-  fetchFn={apiFetch}
+  basePath="/api/chat"
+  fetchFn={fetchChatJson}
   messageSuggestions={[
     {
       label: 'Plan my homepage',
@@ -92,8 +92,27 @@ Pass `messageSuggestions` to offer optional prompt starters on fresh conversatio
 Backends that support long-running chat turns can opt into stop and queue UI without changing the default behavior. When no capability is provided, the input is disabled while a response is loading, matching earlier releases.
 
 ```tsx
+const runAdapter = createRunControlAdapter({
+  basePath: '/api/chat',
+  fetchFn: fetchChatJson,
+  uploadFn: uploadAttachment,
+});
+
 <Chat
-  basePath="/chat"
+  basePath="/api/chat"
+  fetchFn={fetchChatJson}
+  initialSessionId="session-123"
+  runAdapter={runAdapter}
+/>
+```
+
+The adapter above uses generic REST-shaped run endpoints under `basePath`, exposes cancel/queue/status/events capabilities, uploads queued attachments through the supplied `uploadFn`, and normalizes event payloads into `ChatRunEvent` while preserving the raw event object.
+
+Existing manual props continue to work for consumers that already own backend-specific callbacks:
+
+```tsx
+<Chat
+  basePath="/api/chat"
   fetchFn={fetchChatJson}
   initialSessionId="session-123"
   runCapabilities={{ cancel: true, queue: true }}
@@ -118,7 +137,7 @@ The public TypeScript API uses camelCase (`runId`, `queuedMessageId`) while adap
 
 ```tsx
 <Chat
-  basePath="/chat"
+  basePath="/api/chat"
   fetchFn={fetchChatJson}
   runCapabilities={{ cancel: true }}
   getRunId={(metadata) => typeof metadata.run_id === 'string' ? metadata.run_id : null}
@@ -128,11 +147,16 @@ The public TypeScript API uses camelCase (`runId`, `queuedMessageId`) while adap
 
 `onQueueMessage` may return `{ queuedMessageId, position, runId, sessionId, status }` when the adapter has an acknowledgement payload. The UI does not require those fields, but the types preserve them for adapters that want to coordinate follow-up polling or session refreshes.
 
-## Consumers
+Run events can be consumed independently from the UI:
 
-- **extrachill-studio** — Studio Chat tab (agent_id=5)
-- **extrachill-roadie** — Portable floating agent chat
-- **data-machine** — Admin chat sidebar
+```tsx
+const { events, refresh } = useRunEvents({
+  adapter: runAdapter,
+  runId,
+  sessionId,
+  intervalMs: 2000,
+});
+```
 
 ## License
 
