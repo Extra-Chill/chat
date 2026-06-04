@@ -16,8 +16,21 @@ export type {
 } from './types/index.ts';
 
 // API
-export type { FetchFn, FetchOptions, ChatApiConfig, SendResult, ContinueResult, SendAttachment, MediaUploadFn } from './api.ts';
+export type {
+	FetchFn,
+	FetchOptions,
+	ChatApiConfig,
+	ChatAdapter,
+	SendMessageInput,
+	ListSessionsInput,
+	SendResult,
+	ContinueResult,
+	SendAttachment,
+	MediaUploadFn,
+} from './api.ts';
 export {
+	createRestChatAdapter,
+	createSendMessageRequest,
 	sendMessage,
 	continueResponse,
 	listSessions,

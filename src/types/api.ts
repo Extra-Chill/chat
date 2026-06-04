@@ -63,6 +63,10 @@ export interface SendRequest {
 		mime_type?: string;
 		filename?: string;
 	}>;
+	/** Consumer-defined metadata, kept separate from reserved request fields. */
+	metadata?: Record<string, unknown>;
+	/** Consumer-defined client context, kept separate from message metadata. */
+	clientContext?: Record<string, unknown>;
 }
 
 export interface SendResponse {
