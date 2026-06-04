@@ -3,22 +3,21 @@ import type { ChatMessage, ToolCall } from '../types/message.ts';
 import type { ChatSession } from '../types/session.ts';
 import type { ChatAvailability } from '../types/session.ts';
 import type { MediaAttachment } from '../types/message.ts';
-import type { FetchFn, ChatApiConfig, SendAttachment, MediaUploadFn } from '../api.ts';
+import type {
+	FetchFn,
+	SendAttachment,
+	MediaUploadFn,
+	ChatAdapter,
+	ChatRunCapabilities as AdapterChatRunCapabilities,
+	CancelRunInput as AdapterCancelRunInput,
+	QueueMessageInput as AdapterQueueMessageInput,
+	QueueMessageResult as AdapterQueueMessageResult,
+} from '../api.ts';
 import {
-	sendMessage as apiSendMessage,
-	continueResponse as apiContinueResponse,
-	listSessions as apiListSessions,
-	loadSession as apiLoadSession,
-	deleteSession as apiDeleteSession,
-	markSessionRead as apiMarkSessionRead,
+	createRestChatAdapter,
 } from '../api.ts';
 
-export interface ChatRunCapabilities {
-	/** Whether the current backend adapter can cancel an active run. */
-	cancel?: boolean;
-	/** Whether the current backend adapter can queue follow-up messages. */
-	queue?: boolean;
-}
+export type ChatRunCapabilities = AdapterChatRunCapabilities;
 
 export type ChatRunStatus = 'queued' | 'running' | 'cancelling' | 'cancelled' | 'completed' | 'failed';
 
@@ -31,40 +30,26 @@ export interface ChatRun {
 	metadata?: Record<string, unknown>;
 }
 
-export interface CancelRunInput {
-	runId: string;
-	sessionId: string;
-}
+export type CancelRunInput = AdapterCancelRunInput;
 
-export interface QueueMessageInput {
-	sessionId: string;
-	/** Active run this message should follow, when known. */
-	runId?: string;
-	content: string;
-	files?: File[];
-}
+export interface QueueMessageInput extends AdapterQueueMessageInput {}
 
-export interface QueueMessageResult extends Partial<ChatRun> {
-	/** Opaque ID assigned to the queued user message. */
-	queuedMessageId?: string;
-	/** Zero-based or one-based queue position, as reported by the adapter. */
-	position?: number;
-}
+export interface QueueMessageResult extends AdapterQueueMessageResult, Partial<ChatRun> {}
 
 /**
  * Configuration for the useChat hook.
  */
 export interface UseChatOptions {
+	/** Adapter that owns chat transport and backend-specific behavior. */
+	adapter?: ChatAdapter;
 	/**
-	 * Base path for the chat REST endpoints.
-	 * e.g. '/datamachine/v1/chat'
+	 * Base path for the default REST adapter. Required when `adapter` is not provided.
 	 */
-	basePath: string;
+	basePath?: string;
 	/**
-	 * Fetch function for API calls. Must accept { path, method?, data? }
-	 * and return parsed JSON. @wordpress/api-fetch works directly.
+	 * Fetch function for the default REST adapter. Required when `adapter` is not provided.
 	 */
-	fetchFn: FetchFn;
+	fetchFn?: FetchFn;
 	/**
 	 * Agent ID to scope the chat to.
 	 */
@@ -104,6 +89,8 @@ export interface UseChatOptions {
 	 * `{ post_id: 100, context: 'editor' }`).
 	 */
 	metadata?: Record<string, unknown>;
+	/** Client context forwarded separately from message metadata. */
+	clientContext?: Record<string, unknown>;
 	/**
 	 * Upload function for file attachments.
 	 *
@@ -242,6 +229,7 @@ function extractRunId(metadata: Record<string, unknown>): string | null {
  * ```
  */
 export function useChat({
+	adapter,
 	basePath,
 	fetchFn,
 	agentId,
@@ -253,6 +241,7 @@ export function useChat({
 	onToolCalls,
 	onResponseMetadata,
 	metadata,
+	clientContext,
 	mediaUploadFn,
 	runCapabilities,
 	activeRunId,
@@ -261,6 +250,14 @@ export function useChat({
 	onQueueMessage,
 	sessionContext,
 }: UseChatOptions): UseChatReturn {
+	const resolvedAdapter = adapter ?? (() => {
+		if (!basePath || !fetchFn) {
+			throw new Error('useChat requires either an adapter or both basePath and fetchFn');
+		}
+
+		return createRestChatAdapter({ basePath, fetchFn, agentId });
+	})();
+
 	const [messages, setMessages] = useState<ChatMessage[]>(initialMessages ?? []);
 	const [isLoading, setIsLoading] = useState(false);
 	const [isCancelling, setIsCancelling] = useState(false);
@@ -276,25 +273,26 @@ export function useChat({
 	const totalUnreadCount = sessions.reduce((sum, s) => sum + (s.unreadCount ?? 0), 0);
 	const activeSession = sessionId ? sessions.find((s) => s.id === sessionId) : undefined;
 	const unreadCount = activeSession?.unreadCount ?? 0;
-	const resolvedRunCapabilities = runCapabilities ?? {};
+	const adapterRef = useRef<ChatAdapter>(resolvedAdapter);
+	adapterRef.current = resolvedAdapter;
+	const resolvedRunCapabilities = runCapabilities ?? resolvedAdapter.runCapabilities ?? {};
+	const resolvedCancelRun = onCancelRun ?? resolvedAdapter.cancelRun;
+	const resolvedQueueMessage = onQueueMessage ?? resolvedAdapter.queueMessage;
+	const resolvedUploadFile = mediaUploadFn ?? resolvedAdapter.uploadFile;
 	const resolvedActiveRunId = activeRunId ?? metadataRunId;
 	const canCancelRun = !!(
 		isLoading &&
 		resolvedRunCapabilities.cancel &&
-		onCancelRun &&
+		resolvedCancelRun &&
 		resolvedActiveRunId &&
 		sessionId
 	);
 	const canQueueMessage = !!(
 		isLoading &&
 		resolvedRunCapabilities.queue &&
-		onQueueMessage &&
+		resolvedQueueMessage &&
 		sessionId
 	);
-
-	// Build API config from props
-	const configRef = useRef<ChatApiConfig>({ basePath, fetchFn, agentId });
-	configRef.current = { basePath, fetchFn, agentId };
 
 	const sessionIdRef = useRef(sessionId);
 	sessionIdRef.current = sessionId;
@@ -306,8 +304,10 @@ export function useChat({
 	onResponseMetadataRef.current = onResponseMetadata;
 	const metadataRef = useRef(metadata);
 	metadataRef.current = metadata;
-	const mediaUploadFnRef = useRef(mediaUploadFn);
-	mediaUploadFnRef.current = mediaUploadFn;
+	const clientContextRef = useRef(clientContext);
+	clientContextRef.current = clientContext;
+	const mediaUploadFnRef = useRef(resolvedUploadFile);
+	mediaUploadFnRef.current = resolvedUploadFile;
 	const runCapabilitiesRef = useRef(resolvedRunCapabilities);
 	runCapabilitiesRef.current = resolvedRunCapabilities;
 	const activeRunIdRef = useRef(resolvedActiveRunId);
@@ -315,9 +315,9 @@ export function useChat({
 	const getRunIdRef = useRef(getRunId);
 	getRunIdRef.current = getRunId;
 	const onCancelRunRef = useRef(onCancelRun);
-	onCancelRunRef.current = onCancelRun;
+	onCancelRunRef.current = resolvedCancelRun;
 	const onQueueMessageRef = useRef(onQueueMessage);
-	onQueueMessageRef.current = onQueueMessage;
+	onQueueMessageRef.current = resolvedQueueMessage;
 	const sessionContextRef = useRef(sessionContext);
 	sessionContextRef.current = sessionContext;
 	// Guard against concurrent session creation.
@@ -345,11 +345,10 @@ export function useChat({
 		const loadSessions = async () => {
 			setSessionsLoading(true);
 			try {
-				const list = await apiListSessions(
-					configRef.current,
-					20,
-					sessionContextRef.current,
-				);
+				const list = await adapterRef.current.listSessions({
+					limit: 20,
+					context: sessionContextRef.current,
+				});
 				setSessions(list);
 
 				const defaultSessionId = sessionIdRef.current ?? list[0]?.id ?? null;
@@ -357,7 +356,7 @@ export function useChat({
 					setSessionId(defaultSessionId);
 					sessionIdRef.current = defaultSessionId;
 
-					const loaded = await apiLoadSession(configRef.current, defaultSessionId);
+					const loaded = await adapterRef.current.loadSession(defaultSessionId);
 					setMessages(loaded);
 				}
 			} catch (err) {
@@ -414,6 +413,8 @@ export function useChat({
 					runId: activeRunId,
 					content,
 					files,
+					metadata: metadataRef.current,
+					clientContext: clientContextRef.current,
 				});
 				if (queued?.runId) {
 					setMetadataRunId(queued.runId);
@@ -503,13 +504,13 @@ export function useChat({
 		setProcessingSessionId(initiatingSessionId);
 
 		try {
-			const result = await apiSendMessage(
-				configRef.current,
+			const result = await adapterRef.current.sendMessage({
 				content,
-				sessionIdRef.current ?? undefined,
-				sendAttachments,
-				metadataRef.current,
-			);
+				sessionId: sessionIdRef.current ?? undefined,
+				attachments: sendAttachments,
+				metadata: metadataRef.current,
+				clientContext: clientContextRef.current,
+			});
 
 			if (cancelledRequestIdRef.current === requestId || activeRequestIdRef.current !== requestId) return;
 
@@ -538,10 +539,7 @@ export function useChat({
 					turns++;
 					setTurnCount(turns);
 
-					const continuation = await apiContinueResponse(
-						configRef.current,
-						result.sessionId,
-					);
+					const continuation = await adapterRef.current.continueResponse(result.sessionId);
 
 					if (cancelledRequestIdRef.current === requestId || activeRequestIdRef.current !== requestId) break;
 
@@ -562,7 +560,7 @@ export function useChat({
 			}
 
 			// Refresh sessions list after a message
-			apiListSessions(configRef.current, 20, sessionContextRef.current)
+			adapterRef.current.listSessions({ limit: 20, context: sessionContextRef.current })
 				.then(setSessions)
 				.catch(() => { /* ignore */ });
 
@@ -625,7 +623,7 @@ export function useChat({
 		setIsLoading(true);
 
 		try {
-			const loaded = await apiLoadSession(configRef.current, newSessionId);
+			const loaded = await adapterRef.current.loadSession(newSessionId);
 			setMessages(loaded);
 		} catch (err) {
 			onError?.(toError(err));
@@ -643,7 +641,7 @@ export function useChat({
 
 	const deleteSessionHandler = useCallback(async (targetSessionId: string) => {
 		try {
-			await apiDeleteSession(configRef.current, targetSessionId);
+			await adapterRef.current.deleteSession(targetSessionId);
 			setSessions((prev) => prev.filter((s) => s.id !== targetSessionId));
 
 			if (sessionIdRef.current === targetSessionId) {
@@ -672,7 +670,7 @@ export function useChat({
 		);
 
 		try {
-			await apiMarkSessionRead(configRef.current, currentSessionId);
+			await adapterRef.current.markSessionRead?.(currentSessionId);
 		} catch {
 			// Silently fail — next session list refresh will correct the count.
 		}
@@ -681,11 +679,10 @@ export function useChat({
 	const refreshSessions = useCallback(async () => {
 		setSessionsLoading(true);
 		try {
-			const list = await apiListSessions(
-				configRef.current,
-				20,
-				sessionContextRef.current,
-			);
+			const list = await adapterRef.current.listSessions({
+				limit: 20,
+				context: sessionContextRef.current,
+			});
 			setSessions(list);
 		} catch (err) {
 			onError?.(toError(err));
