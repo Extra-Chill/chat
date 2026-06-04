@@ -47,6 +47,25 @@ export {
 	type CanonicalDiffType,
 } from './diff.ts';
 
+// Tool renderer factories
+export {
+	ArtifactStatusCard,
+	createArtifactStatusToolRenderer,
+	createPendingActionDiffRenderer,
+	createQuestionToolRenderer,
+	parseArtifactStatusFromToolGroup,
+	parseQuestionPayloadFromToolGroup,
+	type ArtifactStatus,
+	type ArtifactStatusCardLabels,
+	type ArtifactStatusCardProps,
+	type ArtifactStatusPayload,
+	type ArtifactStatusThumbnail,
+	type ArtifactStatusToolRendererOptions,
+	type PendingActionDiffRendererOptions,
+	type QuestionToolPayload,
+	type QuestionToolRendererOptions,
+} from './tool-renderers.tsx';
+
 // Client context
 export {
 	getOrCreateClientContextRegistry,
