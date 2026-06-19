@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.14.1] - 2026-06-19
+
+### Changed
+- Remove question card freeform input
+
 ## [0.14.0] - 2026-06-04
 
 ### Added
