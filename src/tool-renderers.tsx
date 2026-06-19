@@ -91,9 +91,6 @@ export function createPendingActionDiffRenderer(options: PendingActionDiffRender
 export interface QuestionToolPayload {
 	question: string;
 	choices: QuestionChoice[];
-	allowFreeform: boolean;
-	freeformLabel?: string;
-	freeformPlaceholder?: string;
 }
 
 function normalizeQuestionChoice(value: unknown): QuestionChoice | null {
@@ -128,17 +125,6 @@ export function parseQuestionPayloadFromToolGroup(group: ToolGroup): QuestionToo
 	return {
 		question,
 		choices,
-		allowFreeform: source.allowFreeform !== false && source.allow_freeform !== false,
-		freeformLabel: typeof source.freeformLabel === 'string'
-			? source.freeformLabel
-			: typeof source.freeform_label === 'string'
-				? source.freeform_label
-				: undefined,
-		freeformPlaceholder: typeof source.freeformPlaceholder === 'string'
-			? source.freeformPlaceholder
-			: typeof source.freeform_placeholder === 'string'
-				? source.freeform_placeholder
-				: undefined,
 	};
 }
 
@@ -170,9 +156,6 @@ export function createQuestionToolRenderer(options: QuestionToolRendererOptions 
 			<QuestionCard
 				question={payload.question}
 				choices={payload.choices}
-				allowFreeform={payload.allowFreeform}
-				freeformLabel={payload.freeformLabel}
-				freeformPlaceholder={payload.freeformPlaceholder}
 				disabled={disabled}
 				autoHideOnSubmit={options.autoHideOnSubmit}
 				className={options.className}
