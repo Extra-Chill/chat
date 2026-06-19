@@ -131,7 +131,14 @@ export function parseQuestionPayloadFromToolGroup(group: ToolGroup): QuestionToo
 export interface QuestionToolRendererOptions {
 	/** Called with the selected or typed answer. Defaults to context.sendMessage. */
 	onSubmitAnswer?: (answer: string, group: ToolGroup, context: ToolRendererContext) => void;
-	/** Whether controls are disabled. Defaults to context.isLoading. */
+	/**
+	 * Whether controls are disabled. Defaults to `false`: a question awaiting
+	 * the user's answer is always interactive. It is intentionally NOT gated on
+	 * `context.isLoading` — a turn that ends on an unanswered question can leave
+	 * `isLoading` stuck true, which previously made the choice buttons
+	 * permanently un-clickable. Pass a value (or predicate) only if a caller
+	 * genuinely needs to suppress interaction.
+	 */
 	disabled?: boolean | ((group: ToolGroup, context: ToolRendererContext) => boolean);
 	/** Collapse choices after the user submits an answer. */
 	autoHideOnSubmit?: boolean;
@@ -150,7 +157,7 @@ export function createQuestionToolRenderer(options: QuestionToolRendererOptions 
 
 		const disabled = typeof options.disabled === 'function'
 			? options.disabled(group, context)
-			: options.disabled ?? context.isLoading;
+			: options.disabled ?? false;
 
 		return (
 			<QuestionCard

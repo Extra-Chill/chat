@@ -16,7 +16,11 @@ export interface QuestionCardProps {
 	choices?: QuestionChoice[];
 	/** Called with the selected answer. */
 	onSubmitAnswer: (answer: string) => void;
-	/** Whether controls are disabled. */
+	/**
+	 * Whether controls are disabled. This is a hint that a request is in
+	 * flight; it never permanently locks a question that is still awaiting the
+	 * user's answer. Once the user has submitted, the card locks itself.
+	 */
 	disabled?: boolean;
 	/** Collapse choices after the user submits an answer. Defaults to true. */
 	autoHideOnSubmit?: boolean;
@@ -26,6 +30,12 @@ export interface QuestionCardProps {
 
 /**
  * Renders a structured model-proposed question with selectable choices.
+ *
+ * A question that is awaiting the user's answer is always interactive: the
+ * card only locks its choice buttons once the user has actually submitted an
+ * answer. This prevents a never-resolving loading state upstream from leaving
+ * the question permanently unanswerable. Users who need a different answer use
+ * the main chat input, so there is no freeform field here.
  */
 export function QuestionCard({
 	question,
@@ -40,11 +50,15 @@ export function QuestionCard({
 	const baseClass = 'ec-chat-question';
 	const classes = [baseClass, className].filter(Boolean).join(' ');
 	const submitted = submittedAnswer !== null;
-	const controlsDisabled = disabled || submitted;
+	// Only a submitted answer fully locks the card. `disabled` (e.g. a request
+	// in flight) suppresses interaction while busy but must never strand a
+	// still-unanswered question, so it is intentionally NOT folded into the
+	// permanent lock state.
+	const controlsDisabled = submitted || disabled;
 
 	function submitAnswer(answer: string) {
 		const nextAnswer = answer.trim();
-		if (!nextAnswer || controlsDisabled) return;
+		if (!nextAnswer || submitted) return;
 		onSubmitAnswer(nextAnswer);
 		if (autoHideOnSubmit) {
 			setSubmittedAnswer(nextAnswer);
