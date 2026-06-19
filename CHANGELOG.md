@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.15.1] - 2026-06-19
+
+### Changed
+- Add rich question choice presentations
+
 ## [0.15.0] - 2026-06-19
 
 ### Added
