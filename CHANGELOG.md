@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.14.2] - 2026-06-19
+
+### Fixed
+- keep present_question choice buttons answerable when isLoading sticks
+
 ## [0.14.1] - 2026-06-19
 
 ### Changed
