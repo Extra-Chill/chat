@@ -70,6 +70,76 @@ test('an explicit disabled prop still reflects on the choice buttons', () => {
 	assert.equal(disabledButtonCount(markup), 2, 'explicit disabled should reflect on controls');
 });
 
+test('renderer displays rich choice presentation metadata', () => {
+	const renderer = createQuestionToolRenderer();
+	const markup = renderToStaticMarkup(
+		renderer(
+			questionGroup({
+				question: 'Pick a direction',
+				choices: [
+					{
+						label: 'Warm editorial',
+						description: 'Readable and image-led',
+						presentation: {
+							swatches: ['#f97316', '#fef3c7'],
+							font_sample: {
+								heading: 'Bold headline',
+								body: 'Comfortable body text',
+								heading_font: 'Georgia',
+								body_font: 'Arial',
+							},
+							image: {
+								url: 'https://example.com/thumb.jpg',
+								alt: 'A warm thumbnail',
+							},
+							layout_hint: 'Magazine grid',
+						},
+					},
+				],
+			}),
+			context(),
+		),
+	);
+
+	assert.match(markup, /ec-chat-question__choice-presentation/);
+	assert.match(markup, /ec-chat-question__choice-swatches/);
+	assert.match(markup, /background-color:#f97316/);
+	assert.match(markup, /src="https:\/\/example.com\/thumb.jpg"/);
+	assert.match(markup, /alt="A warm thumbnail"/);
+	assert.match(markup, />Bold headline</);
+	assert.match(markup, />Comfortable body text</);
+	assert.match(markup, />Magazine grid</);
+});
+
+test('renderer omits invalid presentation metadata for text-only fallback', () => {
+	const renderer = createQuestionToolRenderer();
+	const markup = renderToStaticMarkup(
+		renderer(
+			questionGroup({
+				question: 'Pick one',
+				choices: [
+					{
+						label: 'Text only',
+						description: 'Still works',
+						presentation: {
+							swatches: [''],
+							font_sample: { heading: '   ' },
+							image: { url: 42, alt: ['bad'] },
+							layout_hint: '',
+						},
+					},
+				],
+			}),
+			context(),
+		),
+	);
+
+	assert.match(markup, />Text only</);
+	assert.match(markup, />Still works</);
+	assert.doesNotMatch(markup, /ec-chat-question__choice-presentation/);
+	assert.doesNotMatch(markup, /<img/);
+});
+
 test('a submitted answer reflects in the rendered card', () => {
 	// The card renders the choices for an unanswered question; once answered it
 	// auto-hides them (verified here by the choice-button count before submit).

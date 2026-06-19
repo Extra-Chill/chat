@@ -577,6 +577,65 @@
 	margin-top: 4px;
 }
 
+.ec-chat-question__choice-presentation {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 10px;
+}
+
+.ec-chat-question__choice-image {
+	display: block;
+	width: 100%;
+	max-height: 120px;
+	object-fit: cover;
+	border-radius: 8px;
+	border: 1px solid var(--ec-chat-border);
+}
+
+.ec-chat-question__choice-swatches {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.ec-chat-question__choice-swatch {
+	display: block;
+	width: 22px;
+	height: 22px;
+	border-radius: 999px;
+	border: 1px solid var(--ec-chat-border);
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+}
+
+.ec-chat-question__choice-font-sample {
+	display: block;
+	border: 1px solid var(--ec-chat-border);
+	border-radius: 8px;
+	padding: 8px;
+}
+
+.ec-chat-question__choice-font-heading,
+.ec-chat-question__choice-font-body,
+.ec-chat-question__choice-layout-hint {
+	display: block;
+}
+
+.ec-chat-question__choice-font-heading {
+	font-size: 16px;
+	font-weight: 700;
+}
+
+.ec-chat-question__choice-font-body,
+.ec-chat-question__choice-layout-hint {
+	color: var(--ec-chat-text-muted);
+	font-size: 12px;
+}
+
+.ec-chat-question__choice-layout-hint {
+	font-style: italic;
+}
+
 /* ============================================
    Individual Message
    ============================================ */

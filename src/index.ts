@@ -158,6 +158,7 @@ export {
 	QuestionCard,
 	type QuestionCardProps,
 	type QuestionChoice,
+	type QuestionChoicePresentation,
 } from './components/QuestionCard.tsx';
 
 export {

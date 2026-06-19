@@ -7,6 +7,23 @@ export interface QuestionChoice {
 	message?: string;
 	/** Optional supporting text shown under the label. */
 	description?: string;
+	/** Optional generic presentation hints rendered inline with the choice. */
+	presentation?: QuestionChoicePresentation;
+}
+
+export interface QuestionChoicePresentation {
+	swatches?: string[];
+	font_sample?: {
+		heading?: string;
+		body?: string;
+		heading_font?: string;
+		body_font?: string;
+	};
+	image?: {
+		url: string;
+		alt?: string;
+	};
+	layout_hint?: string;
 }
 
 export interface QuestionCardProps {
@@ -56,6 +73,71 @@ export function QuestionCard({
 	// permanent lock state.
 	const controlsDisabled = submitted || disabled;
 
+	function renderChoiceContent(choice: QuestionChoice) {
+		const presentation = choice.presentation;
+		const hasFontSample = !!(presentation?.font_sample?.heading || presentation?.font_sample?.body);
+		const hasPresentation = !!(
+			presentation?.image
+			|| presentation?.swatches?.length
+			|| hasFontSample
+			|| presentation?.layout_hint
+		);
+		return (
+			<>
+				<span className={`${baseClass}__choice-label`}>{choice.label}</span>
+				{choice.description && (
+					<span className={`${baseClass}__choice-description`}>{choice.description}</span>
+				)}
+				{presentation && hasPresentation && (
+					<span className={`${baseClass}__choice-presentation`}>
+						{presentation.image && (
+							<img
+								className={`${baseClass}__choice-image`}
+								src={presentation.image.url}
+								alt={presentation.image.alt ?? ''}
+							/>
+						)}
+						{presentation.swatches && presentation.swatches.length > 0 && (
+							<span className={`${baseClass}__choice-swatches`} aria-label="Color swatches">
+								{presentation.swatches.map((swatch, index) => (
+									<span
+										key={`${swatch}-${index}`}
+										className={`${baseClass}__choice-swatch`}
+										style={{ backgroundColor: swatch }}
+										title={swatch}
+									/>
+								))}
+							</span>
+						)}
+						{presentation.font_sample && hasFontSample && (
+							<span className={`${baseClass}__choice-font-sample`}>
+								{presentation.font_sample.heading && (
+									<span
+										className={`${baseClass}__choice-font-heading`}
+										style={presentation.font_sample.heading_font ? { fontFamily: presentation.font_sample.heading_font } : undefined}
+									>
+										{presentation.font_sample.heading}
+									</span>
+								)}
+								{presentation.font_sample.body && (
+									<span
+										className={`${baseClass}__choice-font-body`}
+										style={presentation.font_sample.body_font ? { fontFamily: presentation.font_sample.body_font } : undefined}
+									>
+										{presentation.font_sample.body}
+									</span>
+								)}
+							</span>
+						)}
+						{presentation.layout_hint && (
+							<span className={`${baseClass}__choice-layout-hint`}>{presentation.layout_hint}</span>
+						)}
+					</span>
+				)}
+			</>
+		);
+	}
+
 	function submitAnswer(answer: string) {
 		const nextAnswer = answer.trim();
 		if (!nextAnswer || submitted) return;
@@ -97,10 +179,7 @@ export function QuestionCard({
 									className={`${baseClass}__choice ${baseClass}__choice--readonly${selected ? ` ${baseClass}__choice--selected` : ''}`}
 									role="listitem"
 								>
-									<span className={`${baseClass}__choice-label`}>{choice.label}</span>
-									{choice.description && (
-										<span className={`${baseClass}__choice-description`}>{choice.description}</span>
-									)}
+									{renderChoiceContent(choice)}
 								</div>
 							);
 						})}
@@ -123,10 +202,7 @@ export function QuestionCard({
 							onClick={() => submitAnswer(choice.message ?? choice.label)}
 							disabled={controlsDisabled}
 						>
-							<span className={`${baseClass}__choice-label`}>{choice.label}</span>
-							{choice.description && (
-								<span className={`${baseClass}__choice-description`}>{choice.description}</span>
-							)}
+							{renderChoiceContent(choice)}
 						</button>
 					))}
 				</div>
