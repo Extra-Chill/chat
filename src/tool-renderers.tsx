@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { DiffCard, type DiffCardProps } from './components/DiffCard.tsx';
-import { QuestionCard, type QuestionChoice } from './components/QuestionCard.tsx';
+import { QuestionCard, type QuestionChoice, type QuestionChoicePresentation } from './components/QuestionCard.tsx';
 import type { ToolGroup, ToolRenderer, ToolRendererContext } from './components/ToolMessage.tsx';
 import { parseCanonicalDiffFromToolGroup } from './diff.ts';
 
@@ -24,6 +24,26 @@ function readString(source: UnknownRecord, keys: string[]): string | undefined {
 		const value = source[key];
 		if (typeof value === 'string' && value.trim()) {
 			return value.trim();
+		}
+	}
+
+	return undefined;
+}
+
+function readStringArray(source: UnknownRecord, keys: string[]): string[] | undefined {
+	for (const key of keys) {
+		const value = source[key];
+		if (!Array.isArray(value)) {
+			continue;
+		}
+
+		const strings = value
+			.filter((item): item is string => typeof item === 'string')
+			.map((item) => item.trim())
+			.filter(Boolean);
+
+		if (strings.length > 0) {
+			return strings;
 		}
 	}
 
@@ -93,6 +113,45 @@ export interface QuestionToolPayload {
 	choices: QuestionChoice[];
 }
 
+function normalizeQuestionChoicePresentation(value: unknown): QuestionChoicePresentation | undefined {
+	if (!isRecord(value)) {
+		return undefined;
+	}
+
+	const swatches = readStringArray(value, ['swatches']);
+	const layoutHint = readString(value, ['layout_hint', 'layoutHint']);
+	const imageSource = isRecord(value.image) ? value.image : null;
+	const imageUrl = imageSource ? readString(imageSource, ['url']) : undefined;
+	const image = imageUrl
+		? {
+			url: imageUrl,
+			alt: imageSource ? readString(imageSource, ['alt']) : undefined,
+		}
+		: undefined;
+	const fontSampleSource = isRecord(value.font_sample)
+		? value.font_sample
+		: isRecord(value.fontSample)
+			? value.fontSample
+			: null;
+	const fontSample = fontSampleSource
+		? {
+			heading: readString(fontSampleSource, ['heading']),
+			body: readString(fontSampleSource, ['body']),
+			heading_font: readString(fontSampleSource, ['heading_font', 'headingFont']),
+			body_font: readString(fontSampleSource, ['body_font', 'bodyFont']),
+		}
+		: undefined;
+	const normalizedFontSample = fontSample && (fontSample.heading || fontSample.body) ? fontSample : undefined;
+
+	const presentation: QuestionChoicePresentation = {};
+	if (swatches) presentation.swatches = swatches;
+	if (normalizedFontSample) presentation.font_sample = normalizedFontSample;
+	if (image) presentation.image = image;
+	if (layoutHint) presentation.layout_hint = layoutHint;
+
+	return Object.keys(presentation).length > 0 ? presentation : undefined;
+}
+
 function normalizeQuestionChoice(value: unknown): QuestionChoice | null {
 	if (!isRecord(value)) {
 		return null;
@@ -107,6 +166,7 @@ function normalizeQuestionChoice(value: unknown): QuestionChoice | null {
 		label,
 		message: typeof value.message === 'string' ? value.message : undefined,
 		description: typeof value.description === 'string' ? value.description : undefined,
+		presentation: normalizeQuestionChoicePresentation(value.presentation),
 	};
 }
 
