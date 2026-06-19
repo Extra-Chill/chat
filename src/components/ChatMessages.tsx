@@ -1,6 +1,8 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import type { ChatMessage as ChatMessageType, ContentFormat } from '../types/index.ts';
 import { buildMessageTimeline } from '../tool-timeline.ts';
+import { parseQuestionPayloadFromToolGroup } from '../tool-renderers.tsx';
+import { collectSuppressedQuestionRestatementIds } from '../question-suppression.ts';
 import { ChatMessage } from './ChatMessage.tsx';
 import { ToolMessage, type ToolRenderer, type ToolRendererContext } from './ToolMessage.tsx';
 
@@ -61,6 +63,22 @@ export interface ChatMessagesProps {
 	shapeRenderers?: ShapeRenderer[];
 	/** Action context passed to custom tool renderers. */
 	toolRendererContext?: ToolRendererContext;
+	/**
+	 * Suppress an assistant text turn that merely restates the choices of an
+	 * immediately-adjacent question card (see #65). When a tool group renders a
+	 * `{question, choices}` card, a chatty model often ALSO narrates the same
+	 * choices as a markdown bullet list; both render stacked and users answer
+	 * the prose instead of clicking the card. With this on (the default), the
+	 * redundant prose restatement is dropped and only the card renders.
+	 *
+	 * Detection is deterministic and conservative — it only drops prose that is
+	 * clearly the same choice set restated as a list, never arbitrary follow-up
+	 * prose. Requires `showTools` (the card itself only renders with tools on).
+	 * Set to `false` to render every assistant turn verbatim.
+	 *
+	 * Defaults to `true`.
+	 */
+	suppressRedundantQuestionProse?: boolean;
 	/** Whether to auto-scroll to bottom on new messages. Defaults to true. */
 	autoScroll?: boolean;
 	/** Placeholder content shown when there are no messages. */
@@ -86,6 +104,7 @@ export function ChatMessages({
 	toolRenderers,
 	shapeRenderers,
 	toolRendererContext,
+	suppressRedundantQuestionProse = true,
 	autoScroll = true,
 	emptyState,
 	footer,
@@ -106,6 +125,12 @@ export function ChatMessages({
 	}, [messages, footer, autoScroll]);
 
 	const displayItems = buildMessageTimeline(messages, { showTools });
+	// When a question renders as an interactive card, drop an adjacent assistant
+	// text turn that merely restates the same choices as prose (#65). The card
+	// only renders with tools on, so suppression is scoped to that case.
+	const suppressedMessageIds = showTools && suppressRedundantQuestionProse
+		? collectSuppressedQuestionRestatementIds(displayItems, parseQuestionPayloadFromToolGroup)
+		: null;
 	const baseClass = 'ec-chat-messages';
 	const classes = [baseClass, className].filter(Boolean).join(' ');
 	const rendererContext = toolRendererContext ?? {
@@ -129,6 +154,10 @@ export function ChatMessages({
 		<div className={classes} ref={containerRef}>
 			{displayItems.map((item) => {
 				if (item.type === 'message') {
+					if (suppressedMessageIds?.has(item.message.id)) {
+						return null;
+					}
+
 					return (
 						<ChatMessage
 							key={item.message.id}

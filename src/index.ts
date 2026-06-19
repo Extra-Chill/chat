@@ -64,6 +64,13 @@ export {
 	type ToolGroup,
 } from './tool-timeline.ts';
 
+// Question-restatement suppression
+export {
+	collectSuppressedQuestionRestatementIds,
+	isRedundantQuestionRestatement,
+	type QuestionRestatementOptions,
+} from './question-suppression.ts';
+
 // Diff helpers
 export {
 	parseCanonicalDiff,
