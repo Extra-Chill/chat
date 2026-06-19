@@ -134,6 +134,7 @@ export {
 export {
 	ChatMessages,
 	type ChatMessagesProps,
+	type ShapeRenderer,
 } from './components/ChatMessages.tsx';
 
 export {

@@ -4,6 +4,17 @@ import { buildMessageTimeline } from '../tool-timeline.ts';
 import { ChatMessage } from './ChatMessage.tsx';
 import { ToolMessage, type ToolRenderer, type ToolRendererContext } from './ToolMessage.tsx';
 
+/**
+ * A renderer that dispatches off the *shape* of a tool group rather than its
+ * tool name. It must return `null` when the group does not match its expected
+ * shape so the next shape renderer (or the default `ToolMessage`) can take over.
+ *
+ * It is structurally identical to `ToolRenderer`; the distinct alias documents
+ * the contract that a shape renderer is safe to attempt on *any* tool group and
+ * will opt out by returning `null` when the shape does not match.
+ */
+export type ShapeRenderer = ToolRenderer;
+
 export interface ChatMessagesProps {
 	/** All messages in the conversation. */
 	messages: ChatMessageType[];
@@ -31,6 +42,23 @@ export interface ChatMessagesProps {
 	 * ```
 	 */
 	toolRenderers?: Record<string, ToolRenderer>;
+	/**
+	 * Ordered list of shape-detecting renderers, tried when no tool-name
+	 * renderer matches `group.toolName`.
+	 *
+	 * Unlike `toolRenderers` (keyed by tool *name*), these dispatch off the
+	 * *shape* of a tool group's result — so any tool whose result carries a
+	 * recognized payload (e.g. a `{question, choices}` shape) renders the same
+	 * way, with zero hardcoded tool names. Each renderer must return `null`
+	 * when it cannot handle the group; the first non-null result wins.
+	 * If every shape renderer returns `null`, the default `ToolMessage` is used.
+	 *
+	 * @example
+	 * ```tsx
+	 * shapeRenderers={[createQuestionToolRenderer()]}
+	 * ```
+	 */
+	shapeRenderers?: ShapeRenderer[];
 	/** Action context passed to custom tool renderers. */
 	toolRendererContext?: ToolRendererContext;
 	/** Whether to auto-scroll to bottom on new messages. Defaults to true. */
@@ -56,6 +84,7 @@ export function ChatMessages({
 	showTools = false,
 	toolNames,
 	toolRenderers,
+	shapeRenderers,
 	toolRendererContext,
 	autoScroll = true,
 	emptyState,
@@ -118,6 +147,23 @@ export function ChatMessages({
 								{customRenderer(item.group, rendererContext)}
 							</div>
 						);
+					}
+
+					// No tool-name renderer matched. Try shape-detecting
+					// renderers in order; the first non-null result wins.
+					// Dispatch is by result shape, not tool name — so any tool
+					// carrying a recognized payload renders the same way.
+					if (shapeRenderers) {
+						for (const shapeRenderer of shapeRenderers) {
+							const rendered = shapeRenderer(item.group, rendererContext);
+							if (rendered !== null && rendered !== undefined) {
+								return (
+									<div key={item.group.callMessage.id}>
+										{rendered}
+									</div>
+								);
+							}
+						}
 					}
 
 					return (
