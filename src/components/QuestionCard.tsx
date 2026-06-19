@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 
 export interface QuestionChoice {
 	/** Short visible choice label. */
@@ -14,13 +14,7 @@ export interface QuestionCardProps {
 	question: string;
 	/** Model-proposed choices. */
 	choices?: QuestionChoice[];
-	/** Whether the user may type a custom answer. Defaults to true. */
-	allowFreeform?: boolean;
-	/** Label for the freeform answer input. */
-	freeformLabel?: string;
-	/** Placeholder for the freeform answer input. */
-	freeformPlaceholder?: string;
-	/** Called with the selected or typed answer. */
+	/** Called with the selected answer. */
 	onSubmitAnswer: (answer: string) => void;
 	/** Whether controls are disabled. */
 	disabled?: boolean;
@@ -31,21 +25,16 @@ export interface QuestionCardProps {
 }
 
 /**
- * Renders a structured model-proposed question with selectable choices and
- * an optional custom-answer input.
+ * Renders a structured model-proposed question with selectable choices.
  */
 export function QuestionCard({
 	question,
 	choices = [],
-	allowFreeform = true,
-	freeformLabel = 'Type your own answer',
-	freeformPlaceholder = 'Type your answer...',
 	onSubmitAnswer,
 	disabled = false,
 	autoHideOnSubmit = true,
 	className,
 }: QuestionCardProps) {
-	const [freeformAnswer, setFreeformAnswer] = useState('');
 	const [submittedAnswer, setSubmittedAnswer] = useState<string | null>(null);
 	const [showChoices, setShowChoices] = useState(false);
 	const baseClass = 'ec-chat-question';
@@ -61,14 +50,6 @@ export function QuestionCard({
 			setSubmittedAnswer(nextAnswer);
 			setShowChoices(false);
 		}
-	}
-
-	function handleSubmit(event: FormEvent) {
-		event.preventDefault();
-		const answer = freeformAnswer.trim();
-		if (!answer || controlsDisabled) return;
-		submitAnswer(answer);
-		setFreeformAnswer('');
 	}
 
 	if (submitted && autoHideOnSubmit) {
@@ -135,24 +116,6 @@ export function QuestionCard({
 						</button>
 					))}
 				</div>
-			)}
-			{allowFreeform && (
-				<form className={`${baseClass}__freeform`} onSubmit={handleSubmit}>
-					<label className={`${baseClass}__freeform-label`}>
-						{freeformLabel}
-						<input
-							className={`${baseClass}__freeform-input`}
-							type="text"
-							value={freeformAnswer}
-							onChange={(event) => setFreeformAnswer(event.target.value)}
-							placeholder={freeformPlaceholder}
-							disabled={controlsDisabled}
-						/>
-					</label>
-					<button className={`${baseClass}__freeform-submit`} type="submit" disabled={controlsDisabled || !freeformAnswer.trim()}>
-						Send
-					</button>
-				</form>
 			)}
 		</div>
 	);
