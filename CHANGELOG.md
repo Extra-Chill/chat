@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.15.0] - 2026-06-19
+
+### Added
+- forward shapeRenderers through top-level Chat component
+- dispatch tool renderers by result shape, not just tool name
+
 ## [0.14.2] - 2026-06-19
 
 ### Fixed
