@@ -7,7 +7,7 @@ import { useChat, type UseChatOptions } from './hooks/useChat.ts';
 import { useLoadingMessages, type LoadingMessagesConfig } from './hooks/useLoadingMessages.ts';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { AvailabilityGate } from './components/AvailabilityGate.tsx';
-import { ChatMessages } from './components/ChatMessages.tsx';
+import { ChatMessages, type ShapeRenderer } from './components/ChatMessages.tsx';
 import { ChatInput } from './components/ChatInput.tsx';
 import { TypingIndicator } from './components/TypingIndicator.tsx';
 import { SessionSwitcher } from './components/SessionSwitcher.tsx';
@@ -65,6 +65,16 @@ export interface ChatProps {
 	 * the default ToolMessage JSON display.
 	 */
 	toolRenderers?: Record<string, ToolRenderer>;
+	/**
+	 * Ordered list of shape-detecting renderers, tried when no tool-name
+	 * renderer in `toolRenderers` matches a tool group.
+	 *
+	 * Unlike `toolRenderers` (keyed by tool *name*), these dispatch off the
+	 * *shape* of a tool group's result — so any tool whose result carries a
+	 * recognized payload (e.g. a `{question, choices}` shape) renders the same
+	 * way, with zero hardcoded tool names. Forwarded to {@link ChatMessages}.
+	 */
+	shapeRenderers?: ShapeRenderer[];
 	/** Placeholder text for the input. */
 	placeholder?: string;
 	/** Content shown when conversation is empty. */
@@ -225,6 +235,7 @@ export function Chat({
 	showTools = true,
 	toolNames,
 	toolRenderers,
+	shapeRenderers,
 	placeholder,
 	emptyState,
 	messageSuggestions,
@@ -384,6 +395,7 @@ export function Chat({
 					showTools={showTools}
 					toolNames={toolNames}
 					toolRenderers={toolRenderers}
+					shapeRenderers={shapeRenderers}
 					toolRendererContext={{
 						sendMessage: chat.sendMessage,
 						isLoading: chat.isLoading,
